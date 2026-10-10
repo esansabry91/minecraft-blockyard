@@ -1021,6 +1021,164 @@ function updateAnimals(dt) {
   }
 }
 
+/* ---------- friendly night zombies ---------- */
+const zombies = [], zMat = new Map();
+let zSpawnT = 2, zNight = false, zKnock = { vx: 0, vz: 0, t: 0 }, zBonk = 0, zKO = 0;
+function makeZombie() {
+  const g = new THREE.Group();
+  const zm = c => { let m = zMat.get(c); if (!m) { m = new THREE.MeshBasicMaterial({ color: c }); zMat.set(c, m); } return m; };
+  const skin = zm(0x7fd066), shirt = zm(0x3a9aae), pants = zm(0x4a52c0), white = zm(0xffffff), black = zm(0x1a1a1a), mouth = zm(0x3a2a2a);
+  const body = mk(0.6, 0.75, 0.32, shirt, 0, 1.05, 0);
+  const head = new THREE.Group(); head.position.set(0, 1.62, 0);
+  head.add(mk(0.56, 0.56, 0.56, skin, 0, 0, 0), mk(0.17, 0.17, 0.04, white, -0.14, 0.06, 0.29), mk(0.17, 0.17, 0.04, white, 0.14, 0.06, 0.29), mk(0.08, 0.08, 0.05, black, -0.14, 0.05, 0.31), mk(0.08, 0.08, 0.05, black, 0.14, 0.05, 0.31), mk(0.26, 0.07, 0.04, mouth, 0, -0.16, 0.29));
+  const limb = (w, h, d, mat, x, y, z) => { const p = new THREE.Group(); p.position.set(x, y, z); const m = mk(w, h, d, mat, 0, -h / 2 + 0.05, 0); p.add(m); return p; };
+  const armL = limb(0.2, 0.7, 0.2, skin, -0.4, 1.38, 0), armR = limb(0.2, 0.7, 0.2, skin, 0.4, 1.38, 0);
+  armL.rotation.x = armR.rotation.x = -1.45;
+  const legL = limb(0.26, 0.7, 0.26, pants, -0.15, 0.7, 0), legR = limb(0.26, 0.7, 0.26, pants, 0.15, 0.7, 0);
+  g.add(body, head, armL, armR, legL, legR);
+  return { g, head, armL, armR, legL, legR };
+}
+let zid = 0, zSendT = 0, zLastIn = 0;
+function zIsAuth() {
+  if (!net) return true;
+  try {
+    const ps = net.rm.peers().filter(p => p.kind === 'viewer'), mine = ps.find(p => p.isMe && p.sameTab);
+    if (!mine) return true;
+    return ps.map(p => p.peer).sort()[0] === mine.peer;
+  } catch (e) { return true; }
+}
+function addZombie(x, y, z, id) {
+  const m = makeZombie(); m.g.position.set(x, y, z); scene.add(m.g);
+  m.g.scale.set(0.01, 0.01, 0.01);
+  if (id === undefined) { id = ++zid; } else zid = Math.max(zid, id);
+  const zo = Object.assign(m, { id, h: Math.random() * 6.28, t: 0, ph: Math.random() * 6, hp: 3, ko: 0, pop: 0, hurt: 0, cd: 0, chase: false, tx: x, ty: y, tz: z });
+  zombies.push(zo); return zo;
+}
+function zombiePoof(z) {
+  const p = z.g.position; confetti(p.x, p.y + 1, p.z, 36, 3.5); beep(380, 0.18, 'triangle', 0.08);
+  scene.remove(z.g); const i = zombies.indexOf(z); if (i >= 0) zombies.splice(i, 1);
+}
+function zombieKnock(z, kx, kz) {
+  z.hp--; z.hurt = 0.25; z.chase = true;
+  const kd = Math.hypot(kx, kz) || 1; z.kx = kx / kd * 7; z.kz = kz / kd * 7; z.kt = 0.22;
+  if (z.hp <= 0 && !z.ko) z.ko = 0.7;
+}
+function zombieHit() {
+  if (!zombies.length) return false;
+  const ex = pos.x, ey = pos.y + 1.6, ez = pos.z, cp = Math.cos(pitch);
+  const dx = -Math.sin(yaw) * cp, dy = Math.sin(pitch), dz = -Math.cos(yaw) * cp;
+  let best = null, bd = 1e9;
+  for (const z of zombies) {
+    if (z.ko) continue;
+    const gx = z.g.position.x - ex, gy = z.g.position.y + 1.0 - ey, gz = z.g.position.z - ez, d = Math.hypot(gx, gy, gz);
+    if (d > 4.6 || d < 0.01) continue;
+    if ((gx * dx + gy * dy + gz * dz) / d > 0.82 && d < bd) { bd = d; best = z; }
+  }
+  if (!best) return false;
+  const kx = best.g.position.x - ex, kz = best.g.position.z - ez;
+  confetti(best.g.position.x, best.g.position.y + 1.2, best.g.position.z, 10, 2.2); beep(220, 0.1, 'square', 0.09);
+  if (zIsAuth()) zombieKnock(best, kx, kz);
+  else { best.hp--; best.hurt = 0.25; if (best.hp <= 0 && !best.ko) best.ko = 0.7; try { net.rm.emit('zh', { id: best.id, kx: +kx.toFixed(2), kz: +kz.toFixed(2) }).catch(() => { }); } catch (e) { } }
+  if (best.hp <= 0) { zKO++; toast('Knocked out! Zombies beaten: ' + zKO); chime(); }
+  return true;
+}
+function zombieState() {
+  const a = []; for (const z of zombies) a.push([z.id, +z.g.position.x.toFixed(2), +z.g.position.y.toFixed(2), +z.g.position.z.toFixed(2), +z.h.toFixed(2), z.hp, z.ko ? 1 : 0, +z.ph.toFixed(1)]);
+  return a;
+}
+function zombieRecv(list) {
+  zLastIn = performance.now();
+  const seen = new Set();
+  for (const e of list) {
+    if (!Array.isArray(e) || e.length < 8 || !e.slice(1, 5).every(Number.isFinite)) continue;
+    seen.add(e[0]);
+    let z = zombies.find(q => q.id === e[0]);
+    if (!z) z = addZombie(e[1], e[2], e[3], e[0]);
+    z.tx = e[1]; z.ty = e[2]; z.tz = e[3]; z.th = e[4]; z.hp = e[5]; if (e[6] && !z.ko) z.ko = 0.7; z.sph = e[7];
+  }
+  for (const z of zombies.slice()) if (!seen.has(z.id)) zombiePoof(z);
+}
+function updateZombies(dt) {
+  const auth = zIsAuth();
+  const night = zNight ? daylight < 0.62 : daylight < 0.3;
+  if (night && !zNight) { zNight = true; banner('Night time!', 'Zombies come out. Knock them out!'); }
+  if (!night && zNight) { zNight = false; banner('Sunrise!', 'The zombies are gone.'); }
+  if (zBonk > 0) zBonk -= dt;
+  if (zKnock.t > 0) {
+    zKnock.t -= dt;
+    const nx = pos.x + zKnock.vx * dt, nz = pos.z + zKnock.vz * dt;
+    if (!collides(nx, pos.y, pos.z)) pos.x = nx;
+    if (!collides(pos.x, pos.y, nz)) pos.z = nz;
+  }
+  if (paused) return;
+  const players = [{ x: pos.x, y: pos.y, z: pos.z }]; for (const r of remotes.values()) if (r.root && !r.gone) players.push({ x: r.x, y: r.y, z: r.z });
+  if (auth) {
+    if (night) {
+      zSpawnT -= dt;
+      if (zSpawnT <= 0 && zombies.filter(z => !z.ko).length < Math.min(10, 4 + players.length * 2)) {
+        zSpawnT = 2.5 + Math.random() * 2.5;
+        const c = players[Math.floor(Math.random() * players.length)];
+        for (let k = 0; k < 12; k++) {
+          const a = Math.random() * 6.283, r = 14 + Math.random() * 10, x = Math.floor(c.x + Math.cos(a) * r), z = Math.floor(c.z + Math.sin(a) * r);
+          if (x < 2 || z < 2 || x >= W - 2 || z >= D - 2) continue;
+          const y = surfaceY(x, z); if (y <= SEA + 1 || get(x, y - 1, z) === WATER) continue;
+          addZombie(x + 0.5, y, z + 0.5); break;
+        }
+      }
+    }
+  } else if (performance.now() - zLastIn > 4000 && zombies.length) { for (const z of zombies.slice()) zombiePoof(z); }
+  const k = Math.min(1, dt * 10);
+  for (const z of zombies.slice()) {
+    const gp = z.g.position;
+    if (auth && !night && !z.ko && !z.dawn) z.dawn = 0.01 + Math.random() * 1.5;
+    if (auth && z.dawn > 0) { z.dawn -= dt; if (z.dawn <= 0) { zombiePoof(z); } continue; }
+    if (z.ko) { z.ko -= dt; z.g.rotation.y += dt * 14; gp.y += dt * 1.2; z.g.scale.setScalar(Math.max(0.01, z.ko / 0.7)); if (z.ko <= 0) zombiePoof(z); continue; }
+    if (z.pop < 1) { z.pop = Math.min(1, z.pop + dt * 2.5); z.g.scale.setScalar(Math.max(0.01, z.pop)); }
+    if (z.hurt > 0) { z.hurt -= dt; z.g.scale.y = 0.85 + 0.15 * (1 - z.hurt / 0.25); }
+    z.cd -= dt;
+    const ox = gp.x, oz = gp.z;
+    if (!auth) {
+      gp.x += (z.tx - gp.x) * k; gp.y += (z.ty - gp.y) * k; gp.z += (z.tz - gp.z) * k;
+      if (z.th !== undefined) { let dh = z.th - z.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh)); z.h += dh * k; }
+      z.ph += Math.hypot(gp.x - ox, gp.z - oz) / Math.max(dt, 0.001) * dt * 1.8;
+    } else {
+      let near = players[0], nd = 1e9;
+      for (const p of players) { const dd = Math.hypot(p.x - gp.x, p.z - gp.z); if (dd < nd) { nd = dd; near = p; } }
+      const dx = near.x - gp.x, dz = near.z - gp.z, d = nd;
+      z.t -= dt;
+      if (z.kt > 0) { z.kt -= dt; const nx = gp.x + z.kx * dt, nz = gp.z + z.kz * dt; if (!solid(Math.floor(nx), Math.floor(gp.y + 0.5), Math.floor(nz))) { gp.x = nx; gp.z = nz; } }
+      else {
+        z.chase = d < 20;
+        let walk = false;
+        if (z.chase) { z.h = Math.atan2(dx, dz); walk = d > 0.9; }
+        else { if (z.t <= 0) { z.wk = Math.random() < 0.5; z.h += (Math.random() - 0.5) * 3; z.t = 1.5 + Math.random() * 3; } walk = !!z.wk; }
+        if (walk) {
+          const sp3 = z.chase ? 2.3 : 0.8;
+          const nx = gp.x + Math.sin(z.h) * sp3 * dt, nz = gp.z + Math.cos(z.h) * sp3 * dt;
+          const fx = Math.floor(nx), fz = Math.floor(nz);
+          const ny = (fx > 0 && fz > 0 && fx < W - 1 && fz < D - 1) ? surfaceY(fx, fz) : 99;
+          if (ny - gp.y <= 1.05 && get(fx, ny - 1, fz) !== WATER) { gp.x = nx; gp.z = nz; z.ph += dt * 7; }
+          else { z.h += 1.6 + Math.random(); z.t = 0.6; z.wk = true; }
+        }
+      }
+      const ty = surfaceY(Math.floor(gp.x), Math.floor(gp.z));
+      gp.y += (ty - gp.y) * Math.min(1, dt * 10);
+    }
+    z.g.rotation.y = z.h;
+    const sw = Math.sin(z.ph) * 0.7;
+    z.legL.rotation.x = sw; z.legR.rotation.x = -sw; z.armL.rotation.x = -1.45 + Math.sin(z.ph) * 0.15; z.armR.rotation.x = -1.45 - Math.sin(z.ph) * 0.15;
+    z.head.rotation.y = Math.sin(z.ph * 0.5) * 0.15;
+    // contact with ME (each tablet checks its own player)
+    const mx = pos.x - gp.x, mz = pos.z - gp.z, md = Math.hypot(mx, mz);
+    if (md < 1.05 && Math.abs(gp.y - pos.y) < 1.6 && z.cd <= 0 && z.pop >= 1) {
+      z.cd = 1.4; zBonk = 0.35;
+      const nd = md || 1; zKnock.vx = mx / nd * 6; zKnock.vz = mz / nd * 6; zKnock.t = 0.25;
+      beep(130, 0.2, 'sawtooth', 0.08); toast('Boo! Knock it out!');
+    }
+  }
+  if (auth && net) { zSendT -= dt; if (zSendT <= 0) { zSendT = zombies.length ? 0.12 : 0.6; try { net.rm.emit('z', { a: zombieState() }).catch(() => { }); } catch (e) { } } }
+}
+
 /* ---------- toasts, banners ---------- */
 const nameEl = document.getElementById('blockname'), toastEl = document.getElementById('toast'), banEl = document.getElementById('banner');
 let nameTimer = 0, toastTimer = 0, banTimer = 0;
@@ -1151,6 +1309,7 @@ function collect(id) {
 }
 function doBreak() {
   swing = 1;
+  if (zombieHit()) return;
   const h = raycast(6.5); if (!h) return;
   const i = idx(h.x, h.y, h.z), id = get(h.x, h.y, h.z);
   if (isDecor(id) && natural.has(i)) { natural.delete(i); collect(id); }
@@ -1627,6 +1786,8 @@ async function connectNet() {
       const others = rm.peers().filter(p => p.kind === 'viewer' && p.peer !== m.peer).map(p => p.peer).sort(), mine = me();
       if (mine && others[0] === mine.peer) sendWorld();
     }));
+    offs.push(rm.on('z', m => { if (m.sameTab || zIsAuth()) return; try { if (m.data && Array.isArray(m.data.a)) zombieRecv(m.data.a); } catch (e) { } }));
+    offs.push(rm.on('zh', m => { if (m.sameTab || !zIsAuth()) return; try { const d = m.data || {}, z = zombies.find(q => q.id === d.id); if (z && !z.ko && Number.isFinite(d.kx) && Number.isFinite(d.kz)) zombieKnock(z, d.kx, d.kz); } catch (e) { } }));
     offs.push(rm.on('f', m => {
       if (m.sameTab || !m.data) return;
       const d = m.data; if (!Number.isInteger(d.k) || d.k < 0 || d.k > 7 || !Number.isFinite(d.r)) return;
@@ -1916,7 +2077,7 @@ function update(dt) {
   pushPresence(dt);
 }
 function updateAlways(dt) {
-  updateParts(dt); updateAnimals(dt); updateSparks(dt); updateFireworks(dt); updateChests(dt, clock); updateRemotes(dt, clock);
+  updateParts(dt); updateAnimals(dt); updateZombies(dt); updateSparks(dt); updateFireworks(dt); updateChests(dt, clock); updateRemotes(dt, clock);
 }
 
 /* ---------- boot ---------- */
@@ -1955,7 +2116,7 @@ function frame(now) {
   updateSky();
   renderer.render(scene, camera);
 }
-if (window.BLOCKYARD_TEST) window.__bk = { get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+if (window.BLOCKYARD_TEST) window.__bk = { zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
 let lastTapEnd = 0;
@@ -1994,6 +2155,7 @@ function drawMap(dt) {
   };
   for (const ch of chests) { const dx = ch.x - pos.x, dz = ch.z - pos.z; if (Math.hypot(dx, dz) < MMR) dot(ch.x, ch.z, '#ffcf3f', 5); }
   for (const r of remotes.values()) { if (!r.root) continue; const t = (CHARS.find(q => q.id === r.cid) || CHARS[0]).top; dot(r.x, r.z, hex(t), 11, (r.name || 'F').charAt(0).toUpperCase()); }
+  for (const z of zombies) if (!z.ko) dot(z.g.position.x, z.g.position.z, '#e23b3b', 6);
   mmx.restore();
   mmx.beginPath(); mmx.moveTo(c, c - 11); mmx.lineTo(c + 8, c + 9); mmx.lineTo(c, c + 4); mmx.lineTo(c - 8, c + 9); mmx.closePath(); mmx.fillStyle = '#fff'; mmx.fill(); mmx.lineWidth = 2.5; mmx.strokeStyle = '#000'; mmx.stroke();
 }
