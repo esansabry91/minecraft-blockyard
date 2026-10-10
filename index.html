@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#12182b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -78,21 +78,27 @@ body.touch #more, body.touch #more[hidden] { display: flex !important; flex-dire
 .ub.big:hover, .ub.big:focus-visible { background: #ffe07a; }
 .ub kbd { font: 9px var(--font-display); opacity: 0.7; margin-left: 4px; }
 
-#compass { position: fixed; left: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(12, 9, 6, 0.72); border: 3px solid var(--line); border-radius: 4px; font: 800 14px/1.3 var(--font-body); pointer-events: none; }
+#minimap { position: fixed; left: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); width: 112px; height: 112px; border-radius: 50%; border: 3px solid var(--line); box-shadow: 0 0 0 2px rgba(245,236,214,.35); background: rgba(12,9,6,.6); pointer-events: none; z-index: 2; }
+body.touch #minimap { left: 10px; top: calc(74px + env(safe-area-inset-top, 0px)); width: 92px; height: 92px; border-width: 2px; }
+#compass { position: fixed; left: 16px; top: calc(136px + env(safe-area-inset-top, 0px)); display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: rgba(12, 9, 6, 0.72); border: 3px solid var(--line); border-radius: 4px; font: 800 14px/1.3 var(--font-body); pointer-events: none; }
 #arrow { width: 34px; height: 34px; flex: none; }
 #arrow svg { width: 100%; height: 100%; display: block; }
 #cmsg small { display: block; font: 8px/1.6 var(--font-display); color: var(--accent); }
-body.touch #compass { top: calc(74px + env(safe-area-inset-top, 0px)); left: 10px; padding: 5px 8px; gap: 7px; font-size: 12px; max-width: calc(100vw - 190px); border-width: 2px; }
+body.touch #compass { top: calc(172px + env(safe-area-inset-top, 0px)); left: 10px; padding: 5px 8px; gap: 7px; font-size: 12px; max-width: calc(100vw - 190px); border-width: 2px; }
 body.touch #arrow { width: 26px; height: 26px; }
-#friends { position: fixed; left: 16px; top: calc(82px + env(safe-area-inset-top, 0px)); min-width: 150px; max-width: 220px; padding: 8px 10px; background: rgba(12, 9, 6, 0.72); border: 3px solid var(--line); border-radius: 4px; font: 800 13px/1.5 var(--font-body); pointer-events: none; }
+#friends { position: fixed; left: 16px; top: calc(200px + env(safe-area-inset-top, 0px)); min-width: 150px; max-width: 220px; padding: 8px 10px; background: rgba(12, 9, 6, 0.72); border: 3px solid var(--line); border-radius: 4px; font: 800 13px/1.5 var(--font-body); pointer-events: none; }
 #friends[hidden] { display: none; }
 #friends h4 { margin: 0 0 4px; font: 8px/1.6 var(--font-display); color: var(--accent); }
 #friends ul { list-style: none; margin: 0; padding: 0; }
 #friends li { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #friends li i { width: 10px; height: 10px; border-radius: 2px; flex: none; border: 1px solid var(--line); }
-body.touch #friends { left: 10px; right: auto; top: calc(124px + env(safe-area-inset-top, 0px)); max-width: 130px; min-width: 0; padding: 5px 8px; font-size: 11px; border-width: 2px; }
+body.touch #friends { left: 10px; right: auto; top: calc(222px + env(safe-area-inset-top, 0px)); max-width: 130px; min-width: 0; padding: 5px 8px; font-size: 11px; border-width: 2px; }
 
 #touch { display: none; }
+#dpad { position: fixed; left: 22px; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); display: grid; grid-template: repeat(3, 44px) / repeat(3, 44px); gap: 2px; touch-action: none; }
+.dp { width: 44px; height: 44px; border-radius: 10px; border: 2px solid rgba(245, 236, 214, 0.55); background: rgba(12, 9, 6, 0.45); color: var(--ink); font: 18px/1 var(--font-body); padding: 0; touch-action: none; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.dp.down { background: var(--accent); color: var(--accent-ink); }
+html { touch-action: none; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
 body.touch #touch { display: block; }
 #stick { position: fixed; left: 24px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: 136px; height: 136px; border-radius: 50%; background: rgba(12, 9, 6, 0.4); border: 3px solid rgba(245, 236, 214, 0.5); touch-action: none; }
 #knob { position: absolute; left: 40px; top: 40px; width: 56px; height: 56px; border-radius: 50%; background: rgba(245, 236, 214, 0.7); pointer-events: none; }
@@ -181,6 +187,7 @@ body.touch .keys.t { display: grid; }
   <div id="hotbar"></div>
 </div>
 
+<canvas id="minimap" width="200" height="200" aria-label="Map"></canvas>
 <div id="friends" hidden><h4 id="frHead">PLAYING TOGETHER</h4><ul id="frList"></ul></div>
 <div id="compass"><div id="arrow"><svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="16" fill="#3b2f22" stroke="#0c0906" stroke-width="2"/><polygon id="arrowHead" points="17,5 25,24 17,19 9,24" fill="#ffcf3f" stroke="#0c0906" stroke-width="1.5"/></svg></div><div id="cmsg"></div></div>
 
@@ -236,6 +243,12 @@ body.touch .keys.t { display: grid; }
   <div class="tb" id="tBreak">BREAK</div>
   <div class="tb" id="tPlace">PLACE</div>
   <div class="tb" id="tDown">DOWN</div>
+  <div id="dpad" aria-label="Look around">
+    <button class="dp" id="dU" type="button" style="grid-area:1/2">&#9650;</button>
+    <button class="dp" id="dL" type="button" style="grid-area:2/1">&#9664;</button>
+    <button class="dp" id="dR" type="button" style="grid-area:2/3">&#9654;</button>
+    <button class="dp" id="dD" type="button" style="grid-area:3/2">&#9660;</button>
+  </div>
 </div>
 
 <div id="overlay">
@@ -1395,7 +1408,7 @@ function syncPeers(list) {
     let r = remotes.get(p.peer); if (!r) { r = { x: 0, y: 0, z: 0, yaw: 0, phase: 0, root: undefined }; remotes.set(p.peer, r); }
     applyPeerState(r, p.presence || {});
   }
-  for (const [k, r] of remotes) if (!seen.has(k)) { if (r.root) disposeRemote(r); remotes.delete(k); }
+  for (const [k, r] of remotes) { if (seen.has(k)) r.gone = 0; else if (!r.gone) r.gone = performance.now(); }
   renderFriends();
 }
 function renderFriends() {
@@ -1408,7 +1421,8 @@ function renderFriends() {
   for (const r of remotes.values()) { const li = document.createElement('li'); const d = document.createElement('i'); d.style.background = hex((CHARS.find(c => c.id === r.cid) || CHARS[0]).top); li.append(d, document.createTextNode(r.name || 'Friend')); ul.appendChild(li); }
 }
 function updateRemotes(dt, time) {
-  const k = Math.min(1, dt * 9);
+  const k = Math.min(1, dt * 9), nowMs = performance.now();
+  for (const [kk, r] of remotes) if (r.gone && nowMs - r.gone > 9000) { if (r.root) disposeRemote(r); remotes.delete(kk); renderFriends(); }
   for (const r of remotes.values()) {
     if (!r.root) continue;
     const ox = r.x, oz = r.z;
@@ -1649,7 +1663,7 @@ for (const k in sheets) sheets[k].addEventListener('pointerdown', e => e.stopPro
 
 /* ---------- input ---------- */
 const keys = {};
-const touchIn = { x: 0, y: 0, jump: false, down: false };
+const touchIn = { x: 0, y: 0, jump: false, down: false, lx: 0, ly: 0 };
 const overlay = document.getElementById('overlay'), playBtn = document.getElementById('play');
 const bFly = document.getElementById('bFly'), tDown = document.getElementById('tDown');
 const nameInput = document.getElementById('pname'), roomInput = document.getElementById('rcode');
@@ -1765,6 +1779,10 @@ function holdBtn(id, on, off) {
   const up = () => { el.classList.remove('down'); off(); };
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
+holdBtn('dL', () => { touchIn.lx = 1; }, () => { touchIn.lx = 0; });
+holdBtn('dR', () => { touchIn.lx = -1; }, () => { touchIn.lx = 0; });
+holdBtn('dU', () => { touchIn.ly = 1; }, () => { touchIn.ly = 0; });
+holdBtn('dD', () => { touchIn.ly = -1; }, () => { touchIn.ly = 0; });
 holdBtn('tJump', () => { touchIn.jump = true; }, () => { touchIn.jump = false; });
 holdBtn('tDown', () => { touchIn.down = true; }, () => { touchIn.down = false; });
 holdBtn('tBreak', () => { if (paused) return; doBreak(); hold = 'break'; holdCD = 0.3; }, () => { hold = null; });
@@ -1830,7 +1848,7 @@ let scanTimer = 0, clock = 0;
 function update(dt) {
   clock += dt;
   tod = (tod + dt / CYCLE) % 1;
-  const lk = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0), lu = (keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0);
+  const lk = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0) + touchIn.lx, lu = (keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0) + touchIn.ly;
   yaw += lk * 2 * dt; pitch = Math.max(-1.55, Math.min(1.55, pitch + lu * 1.6 * dt));
 
   let mf = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) - touchIn.y, ms = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + touchIn.x;
@@ -1933,10 +1951,52 @@ function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!paused) update(dt);
   updateAlways(dt);
+  drawMap(dt);
   updateSky();
   renderer.render(scene, camera);
 }
 if (window.BLOCKYARD_TEST) window.__bk = { get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
+let lastTapEnd = 0;
+document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastTapEnd < 350 && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) e.preventDefault(); lastTapEnd = n; }, { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault());
+document.addEventListener('wheel', e => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+// ---- minimap
+const mmc = document.getElementById('minimap'), mmx = mmc.getContext('2d');
+const MMR = 26, MMN = 28, MMCOL = {};
+MMCOL[GRASS] = '#5fae4c'; MMCOL[DIRT] = '#8a6238'; MMCOL[STONE] = '#8b8b8b'; MMCOL[WOOD] = '#6b4a2a'; MMCOL[LEAVES] = '#2f7a35'; MMCOL[SAND] = '#e3d089'; MMCOL[PLANKS] = '#b88b4a'; MMCOL[BRICK] = '#a8483a'; MMCOL[GLASS] = '#bfe6f2'; MMCOL[WATER] = '#3f7fd6';
+MMCOL[RED] = '#d63a3a'; MMCOL[BLUE] = '#3a5bd6'; MMCOL[YELLOW] = '#f0cf3a'; MMCOL[ORANGE] = '#ee8a2a'; MMCOL[GREEN] = '#3ab04a'; MMCOL[PINK] = '#ee7ab8'; MMCOL[PURPLE] = '#8a4ad6'; MMCOL[WHITE] = '#f2f2f2'; MMCOL[BLACK] = '#222';
+let mmT = 0, mmTerrain = null;
+function drawMap(dt) {
+  mmT -= dt; if (mmT > 0) return; mmT = 0.12;
+  const S = mmc.width, c = S / 2, sc = c / MMR, cell = S / MMN;
+  const sn = Math.sin(yaw), cs = Math.cos(yaw), fx = -sn, fz = -cs, rx = cs, rz = -sn;
+  mmx.clearRect(0, 0, S, S);
+  mmx.save(); mmx.beginPath(); mmx.arc(c, c, c - 1, 0, 7); mmx.clip();
+  mmx.fillStyle = '#16120d'; mmx.fillRect(0, 0, S, S);
+  for (let gy = 0; gy < MMN; gy++) for (let gx = 0; gx < MMN; gx++) {
+    const r = (gx + 0.5 - MMN / 2) * (2 * MMR / MMN), f = -(gy + 0.5 - MMN / 2) * (2 * MMR / MMN);
+    const wx = Math.floor(pos.x + r * rx + f * fx), wz = Math.floor(pos.z + r * rz + f * fz);
+    if (wx < 0 || wz < 0 || wx >= W || wz >= D) continue;
+    let y = H - 1; while (y > 0 && world[idx(wx, y, wz)] === AIR) y--;
+    const col = MMCOL[world[idx(wx, y, wz)]] || '#9a8a6a';
+    mmx.fillStyle = col; mmx.fillRect(gx * cell, gy * cell, cell + 0.6, cell + 0.6);
+    mmx.fillStyle = 'rgba(0,0,0,' + Math.max(0, Math.min(0.35, (SEA + 8 - y) * 0.02)).toFixed(2) + ')'; mmx.fillRect(gx * cell, gy * cell, cell + 0.6, cell + 0.6);
+  }
+  const dot = (wx, wz, color, rad, letter) => {
+    const dx = wx - pos.x, dz = wz - pos.z; let r = dx * rx + dz * rz, f = dx * fx + dz * fz;
+    const d = Math.hypot(r, f), lim = MMR - 2.5; let edge = false;
+    if (d > lim) { r *= lim / d; f *= lim / d; edge = true; }
+    const px = c + r * sc, py = c - f * sc;
+    mmx.beginPath(); mmx.arc(px, py, edge ? rad * 0.8 : rad, 0, 7); mmx.fillStyle = color; mmx.fill(); mmx.lineWidth = 3; mmx.strokeStyle = '#fff'; mmx.stroke();
+    if (letter && !edge) { mmx.fillStyle = '#000'; mmx.font = '800 ' + Math.round(rad * 1.3) + 'px sans-serif'; mmx.textAlign = 'center'; mmx.textBaseline = 'middle'; mmx.fillText(letter, px, py + 1); }
+  };
+  for (const ch of chests) { const dx = ch.x - pos.x, dz = ch.z - pos.z; if (Math.hypot(dx, dz) < MMR) dot(ch.x, ch.z, '#ffcf3f', 5); }
+  for (const r of remotes.values()) { if (!r.root) continue; const t = (CHARS.find(q => q.id === r.cid) || CHARS[0]).top; dot(r.x, r.z, hex(t), 11, (r.name || 'F').charAt(0).toUpperCase()); }
+  mmx.restore();
+  mmx.beginPath(); mmx.moveTo(c, c - 11); mmx.lineTo(c + 8, c + 9); mmx.lineTo(c, c + 4); mmx.lineTo(c - 8, c + 9); mmx.closePath(); mmx.fillStyle = '#fff'; mmx.fill(); mmx.lineWidth = 2.5; mmx.strokeStyle = '#000'; mmx.stroke();
+}
 requestAnimationFrame(frame);
 booted = true; playBtn.disabled = false; playBtn.textContent = 'PLAY';
 }
