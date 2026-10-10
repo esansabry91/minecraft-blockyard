@@ -56,8 +56,21 @@ body.touch #hud { bottom: auto; top: 0; padding: calc(10px + env(safe-area-inset
 #utils { position: fixed; right: 16px; top: calc(14px + env(safe-area-inset-top, 0px)); display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 #more { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 #more[hidden] { display: none; }
-body.touch #utils { flex-direction: row; flex-wrap: wrap; right: 16px; left: 16px; top: calc(76px + env(safe-area-inset-top, 0px)); justify-content: center; }
-body.touch #more { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+#drawer { display: contents; }
+#bMenu { display: none; }
+body.touch { --slot: min(36px, 9vw); }
+body.touch #hotbar { gap: 3px; padding: 3px; border-width: 2px; }
+body.touch .slot { border-width: 2px; padding: 2px; }
+body.touch #blockname { display: none; }
+body.touch #utils { right: 10px; left: auto; top: calc(74px + env(safe-area-inset-top, 0px)); flex-direction: column; align-items: flex-end; gap: 6px; max-height: calc(100vh - 150px); }
+body.touch .ub { font-size: 13px; padding: 9px 12px; }
+body.touch .ub.big { font-size: 14px; padding: 10px 14px; }
+body.touch .ub kbd { display: none; }
+body.touch #bMenu { display: block; }
+body.touch #bMore { display: none; }
+body.touch #drawer { display: none; flex-direction: column; align-items: flex-end; gap: 6px; padding: 8px; background: rgba(12, 9, 6, 0.9); border: 2px solid var(--line); border-radius: 6px; overflow-y: auto; }
+body.touch #utils.open #drawer { display: flex; }
+body.touch #more, body.touch #more[hidden] { display: flex !important; flex-direction: column; align-items: flex-end; gap: 6px; }
 .ub { font: 800 14px/1 var(--font-body); color: var(--ink); background: rgba(12, 9, 6, 0.72); border: 2px solid var(--line); border-radius: 4px; padding: 10px 13px; cursor: pointer; }
 .ub:hover, .ub:focus-visible { background: var(--panel-2); outline: 2px solid var(--accent); }
 .ub.on { background: var(--accent); color: var(--accent-ink); }
@@ -69,14 +82,15 @@ body.touch #more { flex-direction: row; flex-wrap: wrap; justify-content: center
 #arrow { width: 34px; height: 34px; flex: none; }
 #arrow svg { width: 100%; height: 100%; display: block; }
 #cmsg small { display: block; font: 8px/1.6 var(--font-display); color: var(--accent); }
-body.touch #compass { top: 30%; left: 12px; }
+body.touch #compass { top: calc(74px + env(safe-area-inset-top, 0px)); left: 10px; padding: 5px 8px; gap: 7px; font-size: 12px; max-width: calc(100vw - 190px); border-width: 2px; }
+body.touch #arrow { width: 26px; height: 26px; }
 #friends { position: fixed; left: 16px; top: calc(82px + env(safe-area-inset-top, 0px)); min-width: 150px; max-width: 220px; padding: 8px 10px; background: rgba(12, 9, 6, 0.72); border: 3px solid var(--line); border-radius: 4px; font: 800 13px/1.5 var(--font-body); pointer-events: none; }
 #friends[hidden] { display: none; }
 #friends h4 { margin: 0 0 4px; font: 8px/1.6 var(--font-display); color: var(--accent); }
 #friends ul { list-style: none; margin: 0; padding: 0; }
 #friends li { display: flex; align-items: center; gap: 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #friends li i { width: 10px; height: 10px; border-radius: 2px; flex: none; border: 1px solid var(--line); }
-body.touch #friends { left: auto; right: 12px; top: 30%; max-width: 150px; }
+body.touch #friends { left: 10px; right: auto; top: calc(124px + env(safe-area-inset-top, 0px)); max-width: 130px; min-width: 0; padding: 5px 8px; font-size: 11px; border-width: 2px; }
 
 #touch { display: none; }
 body.touch #touch { display: block; }
@@ -172,6 +186,8 @@ body.touch .keys.t { display: grid; }
 
 <div id="utils">
   <button class="ub big" id="bBuild" type="button">Build helper <kbd>B</kbd></button>
+  <button class="ub" id="bMenu" type="button" aria-expanded="false">&#9776; Menu</button>
+  <div id="drawer">
   <button class="ub" id="bBlocks" type="button">More blocks <kbd>E</kbd></button>
   <button class="ub big" id="bBook" type="button">Adventure book <kbd>K</kbd></button>
   <button class="ub" id="bView" type="button">View: first person</button>
@@ -185,6 +201,7 @@ body.touch .keys.t { display: grid; }
     <button class="ub" id="bFull" type="button">Full screen</button>
     <button class="ub" id="bSound" type="button">Sound: on</button>
     <button class="ub" id="bReset" type="button">New world</button>
+  </div>
   </div>
 </div>
 
@@ -1761,6 +1778,9 @@ click('bBlocks', () => { panelOpen === 'blocks' ? closePanels() : openPanel('blo
 click('bBook', () => { panelOpen === 'book' ? closePanels() : openPanel('book'); });
 click('bView', toggleView);
 click('bFly', () => setFly(!flying));
+click('bMenu', () => { const u = document.getElementById('utils'); const o = u.classList.toggle('open'); document.getElementById('bMenu').setAttribute('aria-expanded', o); });
+document.addEventListener('pointerdown', e => { const u = document.getElementById('utils'); if (u.classList.contains('open') && !u.contains(e.target)) { u.classList.remove('open'); } });
+document.getElementById('drawer').addEventListener('click', e => { if (e.target.closest('button') && !/bTrail|bSound|bFly|bView/.test(e.target.closest('button').id)) document.getElementById('utils').classList.remove('open'); });
 click('bMore', () => { const m = document.getElementById('more'); m.hidden = !m.hidden; });
 click('bTrail', () => setTrail(!trailOn));
 click('bTime', skipTime);
