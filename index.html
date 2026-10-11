@@ -1031,9 +1031,16 @@ function updateAnimals(dt) {
 const zombies = [], zMat = new Map();
 let zDinoT = 40 + Math.random() * 50, zSpawnT = 2, zNight = false, zKnock = { vx: 0, vz: 0, t: 0 }, zBonk = 0, zKO = 0;
 const zm = c => { let m = zMat.get(c); if (!m) { m = new THREE.MeshBasicMaterial({ color: c }); zMat.set(c, m); } return m; };
-function makeDino() {
-  const g = new THREE.Group();
-  const body = zm(0xff8a1e), belly = zm(0xffe3a6), spike = zm(0x8a3fd6), white = zm(0xffffff), black = zm(0x1a1a1a), yellow = zm(0xfff04a), dark = zm(0xe06a10), mouthC = zm(0x7a2a3a);
+const DINO_COLS = [
+  { b: 0xff8a1e, l: 0xffe3a6, d: 0xe06a10, s: 0x8a3fd6, dot: '#ff8a1e' },
+  { b: 0x3a9bff, l: 0xcfe8ff, d: 0x1f6fd0, s: 0xffd83a, dot: '#3a9bff' },
+  { b: 0xff6fae, l: 0xffd6e8, d: 0xd94a8a, s: 0x7a2fd0, dot: '#ff6fae' },
+  { b: 0xa05ae0, l: 0xe6d2ff, d: 0x7a38b8, s: 0xffa63a, dot: '#a05ae0' },
+  { b: 0xe84040, l: 0xffd0c8, d: 0xb82828, s: 0xfff04a, dot: '#e84040' }
+];
+function makeDino(v) {
+  const g = new THREE.Group(), C = DINO_COLS[v % 5];
+  const body = zm(C.b), belly = zm(C.l), spike = zm(C.s), white = zm(0xffffff), black = zm(0x1a1a1a), yellow = zm(0xfff04a), dark = zm(C.d), mouthC = zm(0x7a2a3a);
   g.add(mk(1.5, 1.4, 2.6, body, 0, 2.5, 0), mk(1.2, 0.5, 2.2, belly, 0, 1.95, 0.05));
   g.add(mk(0.9, 1.0, 1.0, body, 0, 3.3, 1.2));
   const head = new THREE.Group(); head.position.set(0, 3.7, 1.8);
@@ -1076,14 +1083,15 @@ function zIsAuth() {
     return ps.map(p => p.peer).sort()[0] === mine.peer;
   } catch (e) { return true; }
 }
-function addZombie(x, y, z, id, kind) {
+function addZombie(x, y, z, id, kind, variant) {
   const dino = kind === 'dino';
-  const m = dino ? makeDino() : makeZombie(); m.g.position.set(x, y, z); scene.add(m.g);
+  variant = variant || 0;
+  const m = dino ? makeDino(variant) : makeZombie(); m.g.position.set(x, y, z); scene.add(m.g);
   m.g.scale.set(0.01, 0.01, 0.01);
   if (id === undefined) { id = ++zid; } else zid = Math.max(zid, id);
-  const zo = Object.assign(m, { id, h: Math.random() * 6.28, t: 0, ph: Math.random() * 6, hp: dino ? 12 : 3, kind: dino ? 'dino' : 'zombie', life: dino ? 110 : 0, ko: 0, pop: 0, hurt: 0, cd: 0, chase: false, tx: x, ty: y, tz: z });
+  const zo = Object.assign(m, { id, h: Math.random() * 6.28, t: 0, ph: Math.random() * 6, hp: dino ? 8 : 3, variant, kind: dino ? 'dino' : 'zombie', life: dino ? 120 : 0, ko: 0, pop: 0, hurt: 0, cd: 0, chase: false, tx: x, ty: y, tz: z });
   zombies.push(zo);
-  if (dino) { banner('ROAR!', 'A big dino is coming! Knock it out: 12 hits'); beep(90, 0.5, 'sawtooth', 0.14); setTimeout(() => beep(70, 0.6, 'sawtooth', 0.14), 450); }
+  if (dino && variant === 0) { banner('ROAR!', 'Five big dinos are coming! 8 hits each'); beep(90, 0.5, 'sawtooth', 0.14); setTimeout(() => beep(70, 0.6, 'sawtooth', 0.14), 450); }
   return zo;
 }
 function zombiePoof(z) {
@@ -1113,14 +1121,14 @@ function zombieHit() {
   if (zIsAuth()) zombieKnock(best, kx, kz);
   else { best.hp--; best.hurt = 0.25; if (best.hp <= 0 && !best.ko) best.ko = 0.7; try { net.rm.emit('zh', { id: best.id, kx: +kx.toFixed(2), kz: +kz.toFixed(2) }).catch(() => { }); } catch (e) { } }
   if (best.hp <= 0) {
-    if (best.kind === 'dino') { banner('You beat the big dino!', 'Wow, amazing!'); chime(); const p = best.g.position; for (let i = 0; i < 4; i++) setTimeout(() => launchRocket(p.x + (Math.random() - 0.5) * 8, p.y + 2, p.z + (Math.random() - 0.5) * 8), i * 260); }
+    if (best.kind === 'dino') { const left = zombies.filter(q => q.kind === 'dino' && !q.ko && q !== best).length; banner(left ? 'Dino beaten!' : 'You beat ALL the dinos!', left ? left + ' more to go' : 'Wow, amazing!'); chime(); const p = best.g.position; for (let i = 0; i < 4; i++) setTimeout(() => launchRocket(p.x + (Math.random() - 0.5) * 8, p.y + 2, p.z + (Math.random() - 0.5) * 8), i * 260); }
     else { zKO++; toast('Knocked out! Zombies beaten: ' + zKO); chime(); }
   }
-  else if (best.kind === 'dino' && best.hp % 3 === 0) toast('Keep going! ' + best.hp + ' more hits');
+  else if (best.kind === 'dino' && best.hp === 4) toast('Keep going! 4 more hits');
   return true;
 }
 function zombieState() {
-  const a = []; for (const z of zombies) a.push([z.id, +z.g.position.x.toFixed(2), +z.g.position.y.toFixed(2), +z.g.position.z.toFixed(2), +z.h.toFixed(2), z.hp, z.ko ? 1 : 0, +z.ph.toFixed(1), z.kind === 'dino' ? 'd' : 'z']);
+  const a = []; for (const z of zombies) a.push([z.id, +z.g.position.x.toFixed(2), +z.g.position.y.toFixed(2), +z.g.position.z.toFixed(2), +z.h.toFixed(2), z.hp, z.ko ? 1 : 0, +z.ph.toFixed(1), z.kind === 'dino' ? 'd' + z.variant : 'z']);
   return a;
 }
 function zombieRecv(list) {
@@ -1130,7 +1138,7 @@ function zombieRecv(list) {
     if (!Array.isArray(e) || e.length < 8 || !e.slice(1, 5).every(Number.isFinite)) continue;
     seen.add(e[0]);
     let z = zombies.find(q => q.id === e[0]);
-    if (!z) z = addZombie(e[1], e[2], e[3], e[0], e[8] === 'd' ? 'dino' : 'zombie');
+    if (!z) z = addZombie(e[1], e[2], e[3], e[0], typeof e[8] === 'string' && e[8][0] === 'd' ? 'dino' : 'zombie', typeof e[8] === 'string' && e[8][0] === 'd' ? (+e[8].slice(1) || 0) : 0);
     z.tx = e[1]; z.ty = e[2]; z.tz = e[3]; z.th = e[4]; z.hp = e[5]; if (e[6] && !z.ko) z.ko = 0.7; z.sph = e[7];
   }
   for (const z of zombies.slice()) if (!seen.has(z.id)) zombiePoof(z);
@@ -1167,11 +1175,13 @@ function updateZombies(dt) {
     if (zDinoT <= 0 && daylight > 0.65 && !zNight && !zombies.some(z => z.kind === 'dino')) {
       zDinoT = 150 + Math.random() * 150;
       const c = players[Math.floor(Math.random() * players.length)];
-      for (let k = 0; k < 24; k++) {
-        const a = Math.random() * 6.283, r = 24 + Math.random() * 8, x = Math.floor(c.x + Math.cos(a) * r), z = Math.floor(c.z + Math.sin(a) * r);
+      const a0 = Math.random() * 6.283; let made = 0;
+      for (let k = 0; k < 120 && made < 5; k++) {
+        const a = a0 + (Math.random() - 0.5) * 1.2, r = 24 + Math.random() * 12, x = Math.floor(c.x + Math.cos(a) * r), z = Math.floor(c.z + Math.sin(a) * r);
         if (x < 4 || z < 4 || x >= W - 4 || z >= D - 4) continue;
         const y = surfaceY(x, z); if (y <= SEA + 1 || get(x, y - 1, z) === WATER) continue;
-        addZombie(x + 0.5, y, z + 0.5, undefined, 'dino'); break;
+        if (zombies.some(q => q.kind === 'dino' && Math.hypot(q.g.position.x - x, q.g.position.z - z) < 5)) continue;
+        addZombie(x + 0.5, y, z + 0.5, undefined, 'dino', made); made++;
       }
     }
   } else if (performance.now() - zLastIn > 4000 && zombies.length) { for (const z of zombies.slice()) zombiePoof(z); }
@@ -1194,6 +1204,7 @@ function updateZombies(dt) {
       let near = players[0], nd = 1e9;
       for (const p of players) { const dd = Math.hypot(p.x - gp.x, p.z - gp.z); if (dd < nd) { nd = dd; near = p; } }
       const dx = near.x - gp.x, dz = near.z - gp.z, d = nd;
+      if (z.kind === 'dino') for (const q of zombies) if (q !== z && q.kind === 'dino') { const sx = gp.x - q.g.position.x, sz = gp.z - q.g.position.z, sd = Math.hypot(sx, sz); if (sd < 3.8 && sd > 0.01) { gp.x += sx / sd * (3.8 - sd) * Math.min(1, dt * 3); gp.z += sz / sd * (3.8 - sd) * Math.min(1, dt * 3); } }
       z.t -= dt;
       if (z.kt > 0) { z.kt -= dt; const nx = gp.x + z.kx * dt, nz = gp.z + z.kz * dt; if (!solid(Math.floor(nx), Math.floor(gp.y + 0.5), Math.floor(nz))) { gp.x = nx; gp.z = nz; } }
       else {
@@ -2178,7 +2189,7 @@ function frame(now) {
   updateSky();
   renderer.render(scene, camera);
 }
-if (window.BLOCKYARD_TEST) window.__bk = { spawnDino: () => { const p = pos; return addZombie(p.x + 9, surfaceY(Math.floor(p.x + 9), Math.floor(p.z)), p.z, undefined, 'dino'); }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+if (window.BLOCKYARD_TEST) window.__bk = { spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
 let lastTapEnd = 0;
@@ -2217,7 +2228,7 @@ function drawMap(dt) {
   };
   for (const ch of chests) { const dx = ch.x - pos.x, dz = ch.z - pos.z; if (Math.hypot(dx, dz) < MMR) dot(ch.x, ch.z, '#ffcf3f', 5); }
   for (const r of remotes.values()) { if (!r.root) continue; const t = (CHARS.find(q => q.id === r.cid) || CHARS[0]).top; dot(r.x, r.z, hex(t), 11, (r.name || 'F').charAt(0).toUpperCase()); }
-  for (const z of zombies) if (!z.ko) dot(z.g.position.x, z.g.position.z, z.kind === 'dino' ? '#ff8a1f' : '#e23b3b', z.kind === 'dino' ? 10 : 6);
+  for (const z of zombies) if (!z.ko) dot(z.g.position.x, z.g.position.z, z.kind === 'dino' ? DINO_COLS[z.variant % 5].dot : '#e23b3b', z.kind === 'dino' ? 10 : 6);
   mmx.restore();
   mmx.beginPath(); mmx.moveTo(c, c - 11); mmx.lineTo(c + 8, c + 9); mmx.lineTo(c, c + 4); mmx.lineTo(c - 8, c + 9); mmx.closePath(); mmx.fillStyle = '#fff'; mmx.fill(); mmx.lineWidth = 2.5; mmx.strokeStyle = '#000'; mmx.stroke();
 }
