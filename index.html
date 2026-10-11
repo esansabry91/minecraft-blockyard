@@ -56,6 +56,10 @@ body.touch #hud { bottom: auto; top: 0; padding: calc(10px + env(safe-area-inset
 #count { position: fixed; left: 0; right: 0; top: 34%; text-align: center; font: 120px/1 var(--font-display); color: #ffcf3f; text-shadow: 6px 6px 0 #0c0906, 0 0 30px rgba(255, 120, 0, .8); pointer-events: none; opacity: 0; z-index: 7; }
 #count.show { animation: cpop .95s ease-out; }
 @keyframes cpop { 0% { opacity: 0; transform: scale(2.4); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.7); } }
+#wpick{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;display:flex;gap:8px;padding:8px;background:rgba(20,30,50,.88);border-radius:16px}
+#wpick[hidden]{display:none!important}
+#wpick button{min-width:84px;min-height:56px;font:700 15px system-ui,sans-serif;border:3px solid #fff5;border-radius:12px;background:#2c4a78;color:#fff}
+#wpick button.on{background:#ffb02e;color:#222;border-color:#fff}
 #partsRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 .part { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 9px; font: 800 13px/1 var(--font-body); color: var(--ink); }
 .part i { width: 12px; height: 12px; border: 1px solid var(--line); display: block; }
@@ -263,6 +267,7 @@ body.touch .keys.t { display: grid; }
   <div class="grid6" id="blockGrid"></div>
   <button class="close" type="button" data-close>Close</button>
 </div>
+<div id="wpick" hidden></div>
 <div class="sheet" id="pWork" hidden>
   <h2>WORKSHOP</h2>
   <p>Collect parts, then put them together to make a weapon. Break logs for wood, break stone for stone, pick up pink magic gems or find treasure for gems, and swim in water for water drops.</p>
@@ -299,7 +304,7 @@ body.touch .keys.t { display: grid; }
 
 <div id="overlay">
   <div class="panel">
-    <h1>Blockyard</h1>
+    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 19 &middot; fewer trees</div>
     <p>Build anything. Dig anything. Find treasure, pick flowers and play with friends.</p>
     <h2>CHOOSE A MAP</h2>
     <div id="maps">
@@ -511,7 +516,7 @@ function terrainH(x, z) {
   const n = 0.4 * vnoise(x / 80, z / 80, 6) + 0.28 * vnoise(x / 36, z / 36, 7) + 0.2 * vnoise(x / 17, z / 17, 8) + 0.12 * vnoise(x / 7, z / 7, 9);
   return Math.floor(4 + n * 26);
 }
-const isTreeAt = (x, z) => x >= 3 && z >= 3 && x < W - 3 && z < D - 3 && terrainH(x, z) > SEA + 1 && hash(x, z, 31) >= 0.988;
+const isTreeAt = (x, z) => x >= 3 && z >= 3 && x < W - 3 && z < D - 3 && terrainH(x, z) > SEA + 1 && hash(x, z, 31) >= 0.991;
 
 /* ---------- Palace Kingdom map ---------- */
 const PC = { x: 96, z: 96, g: 14 };
@@ -646,14 +651,14 @@ function generatePalace() {
     const y = G(x, z); if (y <= SEA + 1 || world[idx(x, y, z)] !== GRASS || world[idx(x, y + 1, z)] !== AIR) continue;
     if (Math.abs(x - cx) <= 4 && z > cz) continue;
     if (houses.some(h => Math.abs(h.x - x) <= 6 && Math.abs(h.z - z) <= 6)) continue;
-    if (hash(x, z, 61) < 0.011) cherry(x, z, y, hash(x, z, 62) < 0.4);
+    if (hash(x, z, 61) < 0.007) cherry(x, z, y, hash(x, z, 62) < 0.4);
   }
   for (let z = 2; z < D - 2; z++) for (let x = 2; x < W - 2; x++) {
     const y = G(x, z); if (y <= SEA + 1 || world[idx(x, y, z)] !== GRASS || world[idx(x, y + 1, z)] !== AIR) continue;
     const dc = Math.max(Math.abs(x - cx), Math.abs(z - cz)), r = hash(x, z, 41), boost = dc <= 23 ? 4 : 1;
     let id = 0;
     if (r < 0.022 * boost) id = [FLOWER_R, FLOWER_Y, FLOWER_B][Math.floor(hash(x, z, 42) * 3) % 3];
-    else if (r > 0.9 && r < 0.9 + 0.0065) id = MUSHROOM; else if (r > 0.95 && r < 0.95 + 0.0032) id = GEM;
+    else if (r > 0.9 && r < 0.9 + 0.0065) id = MUSHROOM; else if (r > 0.95 && r < 0.95 + 0.009) id = GEM;
     if (id) { const i = idx(x, y + 1, z); world[i] = id; natural.add(i); }
   }
 }
@@ -688,7 +693,7 @@ function generate() {
     const i = idx(x, h + 1, z); if (world[i] !== AIR || world[idx(x, h, z)] !== GRASS) continue;
     const r = hash(x, z, 41); let id = 0;
     if (r < 0.022) id = [FLOWER_R, FLOWER_Y, FLOWER_B][Math.floor(hash(x, z, 42) * 3) % 3];
-    else if (r < 0.0285) id = MUSHROOM; else if (r < 0.0312) id = GEM;
+    else if (r < 0.0285) id = MUSHROOM; else if (r < 0.0365) id = GEM;
     if (id) { world[i] = id; natural.add(i); }
   }
 }
@@ -1178,6 +1183,17 @@ function makeAnimal(kind) {
   } else if (kind === 'chicken') {
     g.add(mk(0.34, 0.3, 0.46, am(0xffffff), 0, 0.36, 0), mk(0.22, 0.22, 0.22, am(0xffffff), 0, 0.62, 0.2), mk(0.1, 0.06, 0.1, am(0xf09a2a), 0, 0.6, 0.34), mk(0.06, 0.1, 0.08, am(0xe03a3a), 0, 0.78, 0.2), mk(0.04, 0.04, 0.03, am(0x111111), -0.07, 0.66, 0.31), mk(0.04, 0.04, 0.03, am(0x111111), 0.07, 0.66, 0.31), mk(0.2, 0.2, 0.08, am(0xeeeeee), 0, 0.46, -0.28));
     for (const lx of [-0.08, 0.08]) g.add(mk(0.04, 0.2, 0.04, am(0xf09a2a), lx, 0.1, 0));
+  } else if (kind === 'unicorn') {
+    const W0 = am(0xffffff), MN = [am(0xff6fb5), am(0xb98cff), am(0x6fd6ff)];
+    g.add(mk(0.55, 0.6, 1.2, W0, 0, 0.95, 0), mk(0.34, 0.6, 0.34, W0, 0, 1.3, 0.55), mk(0.4, 0.38, 0.5, W0, 0, 1.6, 0.8), mk(0.1, 0.1, 0.04, am(0x3a1a5a), -0.14, 1.66, 1.06), mk(0.1, 0.1, 0.04, am(0x3a1a5a), 0.14, 1.66, 1.06), mk(0.2, 0.14, 0.06, am(0xffb8d0), 0, 1.5, 1.07));
+    g.add(mk(0.07, 0.5, 0.07, am(0xffd23a), 0, 2.05, 0.9), mk(0.05, 0.3, 0.05, am(0xfff0a0), 0, 2.4, 0.9), mk(0.1, 0.16, 0.08, W0, -0.15, 1.9, 0.7), mk(0.1, 0.16, 0.08, W0, 0.15, 1.9, 0.7));
+    for (let i = 0; i < 4; i++) g.add(mk(0.16, 0.22, 0.22, MN[i % 3], 0, 1.75 - i * 0.2, 0.5 - i * 0.02));
+    for (let i = 0; i < 3; i++) g.add(mk(0.2, 0.2, 0.2, MN[i], 0, 1.1 - i * 0.22, -0.7 - i * 0.12));
+    for (const [lx, lz] of [[-0.18, -0.45], [0.18, -0.45], [-0.18, 0.45], [0.18, 0.45]]) g.add(mk(0.15, 0.65, 0.15, W0, lx, 0.32, lz), mk(0.16, 0.1, 0.16, am(0xffd23a), lx, 0.05, lz));
+  } else if (kind === 'frog') {
+    const G0 = am(0x3fbf4a), G1 = am(0x8fe07a);
+    g.add(mk(0.5, 0.26, 0.5, G0, 0, 0.2, 0), mk(0.4, 0.04, 0.4, G1, 0, 0.18, 0.02), mk(0.2, 0.2, 0.2, G0, -0.14, 0.4, 0.2), mk(0.2, 0.2, 0.2, G0, 0.14, 0.4, 0.2), mk(0.12, 0.12, 0.05, am(0xffffff), -0.14, 0.42, 0.31), mk(0.12, 0.12, 0.05, am(0xffffff), 0.14, 0.42, 0.31), mk(0.06, 0.06, 0.04, am(0x111111), -0.14, 0.42, 0.34), mk(0.06, 0.06, 0.04, am(0x111111), 0.14, 0.42, 0.34));
+    g.add(mk(0.14, 0.1, 0.34, G0, -0.3, 0.07, -0.1), mk(0.14, 0.1, 0.34, G0, 0.3, 0.07, -0.1), mk(0.12, 0.06, 0.16, G1, -0.26, 0.03, 0.22), mk(0.12, 0.06, 0.16, G1, 0.26, 0.03, 0.22));
   } else {   // bunny
     g.add(mk(0.36, 0.3, 0.5, am(0xb9a898), 0, 0.3, 0), mk(0.28, 0.26, 0.26, am(0xb9a898), 0, 0.5, 0.28), mk(0.06, 0.28, 0.05, am(0xb9a898), -0.07, 0.8, 0.26), mk(0.06, 0.28, 0.05, am(0xb9a898), 0.07, 0.8, 0.26), mk(0.04, 0.04, 0.03, am(0x111111), -0.08, 0.54, 0.41), mk(0.04, 0.04, 0.03, am(0x111111), 0.08, 0.54, 0.41), mk(0.04, 0.04, 0.03, am(0xf09aa8), 0, 0.5, 0.42), mk(0.14, 0.14, 0.12, am(0xffffff), 0, 0.34, -0.3));
     for (const lx of [-0.1, 0.1]) g.add(mk(0.1, 0.12, 0.14, am(0xb9a898), lx, 0.06, 0.1));
@@ -1189,7 +1205,7 @@ const animals = [];
 function addAnimal(kind, x, y, z, follow) {
   if (animals.length >= 48) { const o = animals.shift(); scene.remove(o.g); }
   const g = makeAnimal(kind); g.position.set(x, y, z); scene.add(g);
-  animals.push({ g, h: Math.random() * 6.28, t: Math.random() * 3, walk: false, ph: Math.random() * 6, follow: !!follow });
+  animals.push({ kind, g, h: Math.random() * 6.28, t: Math.random() * 3, walk: false, ph: Math.random() * 6, follow: !!follow });
 }
 function spawnAnimals() {
   for (const p of animals) scene.remove(p.g);
@@ -1200,6 +1216,17 @@ function spawnAnimals() {
     const y = surfaceY(x, z);
     if (y <= SEA + 1 || get(x, y - 1, z) !== GRASS) continue;
     addAnimal(KINDS[animals.length % KINDS.length], x + 0.5, y, z + 0.5, false);
+  }
+  if (MAPID === 'palace') {
+    let u = 0, f = 0, t2 = 0;
+    const nearWater = (x, y, z) => { for (let dx = -3; dx <= 3; dx += 3) for (let dz = -3; dz <= 3; dz += 3) { if (get(x + dx, y - 1, z + dz) === WATER || get(x + dx, y, z + dz) === WATER) return true; } return false; };
+    while ((u < 8 || f < 7) && t2++ < 6000) {
+      const x = 6 + Math.floor(Math.random() * (W - 12)), z = 6 + Math.floor(Math.random() * (D - 12));
+      const y = surfaceY(x, z);
+      if (y <= SEA + 1 || get(x, y - 1, z) !== GRASS || Math.hypot(x - PC.x, z - PC.z) < 34 || get(x, y + 3, z) !== AIR) continue;
+      if (u < 8 && (u <= f || f >= 7)) { addAnimal('unicorn', x + 0.5, y, z + 0.5, false); u++; }
+      else if (f < 7 && (nearWater(x, y, z) || t2 > 3000)) { addAnimal('frog', x + 0.5, y, z + 0.5, false); f++; }
+    }
   }
 }
 function updateAnimals(dt) {
@@ -1214,7 +1241,7 @@ function updateAnimals(dt) {
       else if (p.t <= 0) { p.walk = Math.random() < 0.5; p.h += (Math.random() - 0.5) * 3; p.t = 1.5 + Math.random() * 3; }
     } else if (p.t <= 0) { p.walk = Math.random() < 0.6; p.h += (Math.random() - 0.5) * 3; p.t = 1.5 + Math.random() * 3; }
     if (p.walk) {
-      const sp3 = p.follow ? 2.4 : 0.9;
+      const sp3 = p.follow ? 2.4 : (p.kind === 'unicorn' ? 1.3 : 0.9);
       const nx = gp.x + Math.sin(p.h) * sp3 * dt, nz = gp.z + Math.cos(p.h) * sp3 * dt;
       const fx = Math.floor(nx), fz = Math.floor(nz);
       const ny = (fx > 0 && fz > 0 && fx < W - 1 && fz < D - 1) ? surfaceY(fx, fz) : 99;
@@ -1222,7 +1249,7 @@ function updateAnimals(dt) {
       else { p.h += 2 + Math.random(); p.t = 1 + Math.random(); }
     }
     const ty = surfaceY(Math.floor(gp.x), Math.floor(gp.z));
-    gp.y += (ty - gp.y) * Math.min(1, dt * 10);
+    gp.y += (ty + (p.kind === 'frog' && p.walk ? Math.abs(Math.sin(p.ph * 0.9)) * 0.3 : 0) - gp.y) * Math.min(1, dt * 10);
     p.g.rotation.y = p.h; p.g.rotation.z = p.walk ? Math.sin(p.ph) * 0.05 : 0;
   }
 }
@@ -1653,7 +1680,7 @@ const PART_NAMES = { wood: 'Wood', stone: 'Stone', gem: 'Gem', drop: 'Water drop
 const PART_COL = { wood: '#9a6a2e', stone: '#8b8b8b', gem: '#ff6fd0', drop: '#4aa8ff' };
 const RECIPES = [
   { id: 'sword', name: 'Magic Sword', need: { wood: 1, stone: 2, gem: 1 }, desc: 'Knocks monsters out in fewer hits.' },
-  { id: 'axe', name: 'Mighty Axe', need: { wood: 2, stone: 2 }, desc: 'The strongest hit. Also gives double wood from logs.' },
+  { id: 'axe', name: 'Mighty Axe', need: { wood: 2, stone: 2, gem: 1 }, desc: 'The strongest hit. Also gives double wood from logs.' },
   { id: 'gun', name: 'Water Gun', need: { wood: 1, gem: 1, drop: 2 }, desc: 'Splash monsters from far away.' }
 ];
 const WNAME = { sword: 'Magic Sword', axe: 'Mighty Axe', gun: 'Water Gun' };
@@ -1679,6 +1706,12 @@ function cycleWeapon() {
   const list = [null].concat(Object.keys(owned).filter(k => owned[k]));
   if (list.length === 1) { toast('Make a weapon first: Menu, then Workshop'); openPanel('work'); return; }
   setWeapon(list[(list.indexOf(weapon) + 1) % list.length]);
+}
+function showWpick() {
+  const box = document.getElementById('wpick'); box.textContent = '';
+  const mk = (id, label) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (weapon === id) b.className = 'on'; b.addEventListener('click', () => { setWeapon(id); box.hidden = true; }); box.appendChild(b); };
+  mk(null, 'Hand'); for (const k of Object.keys(owned)) if (owned[k]) mk(k, WNAME[k]);
+  box.hidden = false; clearTimeout(showWpick.t); showWpick.t = setTimeout(() => { box.hidden = true; }, 6000);
 }
 function canMake(r) { for (const k in r.need) if (inv[k] < r.need[k]) return false; return true; }
 function makeWeapon(r) {
@@ -2379,7 +2412,11 @@ holdBtn('tPlace', () => { if (paused) return; doPlace(); hold = 'place'; holdCD 
 function toggleSound() { soundOn = !soundOn; document.getElementById('bSound').textContent = 'Sound: ' + (soundOn ? 'on' : 'off'); }
 document.getElementById('utils').addEventListener('pointerdown', e => e.stopPropagation());
 const click = (id, fn) => document.getElementById(id).addEventListener('click', () => { fn(); if (!panelOpen) canvas.focus(); });
-click('bWeap', cycleWeapon);
+click('bWeap', () => {
+  const list = Object.keys(owned).filter(k => owned[k]);
+  if (!list.length) { toast('Make a weapon first: Menu, then Workshop'); openPanel('work'); return; }
+  showWpick();
+});
 click('bWork', () => { panelOpen === 'work' ? closePanels() : openPanel('work'); });
 click('bMenuClose', () => { document.getElementById('utils').classList.remove('open'); document.getElementById('menuShade').classList.remove('open'); });
 window.addEventListener('keydown', e => { if (e.repeat || paused || e.ctrlKey || e.metaKey) return; if (e.code === 'KeyQ') cycleWeapon(); else if (e.code === 'KeyC') { panelOpen === 'work' ? closePanels() : openPanel('work'); } });
@@ -2566,7 +2603,7 @@ function frame(now) {
   updateSky();
   renderer.render(scene, camera);
 }
-if (window.BLOCKYARD_TEST) window.__bk = { startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+if (window.BLOCKYARD_TEST) window.__bk = { animals: () => animals, startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
 let lastTapEnd = 0;
