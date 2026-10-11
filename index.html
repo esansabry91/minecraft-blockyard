@@ -6,7 +6,12 @@
 <meta name="theme-color" content="#12182b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<style>:root{color-scheme:dark}html,body{margin:0;padding:0;background:#12182b}[hidden]{display:none!important}</style>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blockyard">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>:root{color-scheme:dark}html,body{margin:0;padding:0;background:#12182b;height:100%;overflow:hidden}[hidden]{display:none!important}</style>
 <title>Blockyard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -283,6 +288,7 @@ body.touch .keys.t { display: grid; }
       <dt>BUILD</dt><dd>Tap Build helper for a house or castle</dd>
     </dl>
     <button id="play" type="button">PLAY</button>
+    <p class="fine" id="installTip" hidden></p>
     <p class="fine">Follow the golden beams and the arrow to find treasure chests.</p>
   </div>
 </div>
@@ -696,7 +702,7 @@ for (let i = 0; i < 260; i++) {
 starGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sp), 3));
 const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false });
 const stars = new THREE.Points(starGeo, starMat); stars.frustumCulled = false; scene.add(stars);
-const cNight = new THREE.Color(0x0a1030), cDay = new THREE.Color(0x87ceeb), cDusk = new THREE.Color(0xf29a63), tmpC = new THREE.Color();
+const cNight = new THREE.Color(0x1c2c60), cDay = new THREE.Color(0x87ceeb), cDusk = new THREE.Color(0xf29a63), tmpC = new THREE.Color();
 const remoteLists = [];
 function updateSky() {
   const ang = tod * Math.PI * 2, sunH = Math.sin(ang);
@@ -705,9 +711,9 @@ function updateSky() {
   const dusk = Math.max(0, 1 - Math.abs(sunH) / 0.28) * 0.55;
   if (dusk > 0) tmpC.lerp(cDusk, dusk);
   scene.background.copy(tmpC); scene.fog.color.copy(tmpC);
-  matOpaque.color.setRGB(0.24 + 0.76 * daylight, 0.28 + 0.72 * daylight, 0.46 + 0.54 * daylight);
+  matOpaque.color.setRGB(0.44 + 0.56 * daylight, 0.48 + 0.52 * daylight, 0.68 + 0.32 * daylight);
   matWater.color.copy(matOpaque.color); matHeld.color.copy(matOpaque.color);
-  const f = 0.3 + 0.7 * daylight;
+  const f = 0.52 + 0.48 * daylight;
   for (const s of shaded) s.m.color.copy(s.base).multiplyScalar(f);
   for (const l of remoteLists) for (const s of l) s.m.color.copy(s.base).multiplyScalar(f);
   const cp = camera.position;
@@ -997,7 +1003,7 @@ function spawnAnimals() {
   }
 }
 function updateAnimals(dt) {
-  const f = 0.3 + 0.7 * daylight;
+  const f = 0.52 + 0.48 * daylight;
   for (const s of amats) s.m.color.copy(s.base).multiplyScalar(f);
   for (const p of animals) {
     p.t -= dt;
@@ -1836,6 +1842,17 @@ function setFly(v) {
 function setTrail(v) { trailOn = v; const b = document.getElementById('bTrail'); b.textContent = 'Rainbow trail: ' + (v ? 'on' : 'off'); b.classList.toggle('on', v); }
 function skipTime() { tod = Math.sin(tod * Math.PI * 2) > 0 ? 0.62 : 0.05; }
 function toggleView() { viewMode = viewMode ? 0 : 1; applyView(); }
+(function () {
+  const tip = document.getElementById('installTip');
+  if (!tip || !isTouch || ((window.navigator.standalone === true) || (window.matchMedia && matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches))) return;
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  tip.textContent = ios ? 'Full screen: tap the Share button, choose Add to Home Screen, then open Blockyard from its icon.' : 'Full screen: open the browser menu, choose Add to Home screen (or Install app), then open Blockyard from its icon.';
+  tip.hidden = false;
+})();
+const isStandalone = () => (window.navigator.standalone === true) || (window.matchMedia && matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+function goFull() {
+  try { if (isStandalone() || document.fullscreenElement || document.webkitFullscreenElement) return; const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; if (f) { const p = f.call(el, { navigationUI: 'hide' }); if (p && p.catch) p.catch(() => { }); } } catch (e) { }
+}
 function startPlay() {
   if (!booted) return;
   myName = cleanName(nameInput.value); roomCode = (roomInput.value || 'family').trim() || 'family';
@@ -1843,6 +1860,7 @@ function startPlay() {
   overlay.hidden = true; paused = false;
   try { if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === 'suspended') audio.resume(); } catch (e) { }
   if (!isTouch) { try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { }); } catch (e) { } }
+  if (isTouch) goFull();
   canvas.focus();
   connectNet();
 }
