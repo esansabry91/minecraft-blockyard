@@ -309,7 +309,7 @@ body.touch .keys.t { display: grid; }
 
 <div id="overlay">
   <div class="panel">
-    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 20 &middot; two hands and fireworks</div>
+    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 21 &middot; one hand view</div>
     <p>Build anything. Dig anything. Find treasure, pick flowers and play with friends.</p>
     <h2>CHOOSE A MAP</h2>
     <div id="maps">
@@ -1035,6 +1035,7 @@ function buildHand(ch) {
 }
 function setHeld() {
   if (!armPivot) return;
+  armPivot.visible = !(weaponL && !weapon); armPivotL.visible = !(weapon && !weaponL);
   if (heldMesh) { armPivot.remove(heldMesh); disposeTree(heldMesh); heldMesh = null; }
   if (heldMeshL) { armPivotL.remove(heldMeshL); disposeTree(heldMeshL); heldMeshL = null; }
   if (weaponL) { heldMeshL = makeWeaponMesh(weaponL, true); armPivotL.add(heldMeshL); }
