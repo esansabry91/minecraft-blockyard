@@ -77,6 +77,15 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
 .thumb.on { border-color: var(--accent); }
 .thumb .x { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line); background: #e53935; color: #fff; font: 800 13px/1 var(--font-body); padding: 0; display: grid; place-items: center; }
+/* Photo screen: pick the part of a photo that has the drawing on it */
+#photo { position: fixed; inset: 0; z-index: 5; background: var(--bg); display: flex; flex-direction: column; gap: 10px; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
+#photoTip { margin: 0; text-align: center; color: var(--ink-dim); font-weight: 800; }
+.photoBox { flex: 1; min-height: 0; position: relative; }
+#photoView { position: absolute; inset: 0; margin: auto; max-width: 100%; max-height: 100%; border: 4px solid var(--line); border-radius: 10px; touch-action: none; cursor: crosshair; background: #222; }
+.photoBar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; }
+.photoBar label { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; color: var(--ink-dim); background: var(--panel); border: 3px solid var(--line); border-radius: 10px; padding: 6px 12px; }
+.photoBar input[type=range] { width: 150px; accent-color: var(--accent); }
+.fileIn { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 #toast { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); background: var(--panel); border: 4px solid var(--line); border-radius: 12px; padding: 12px 18px; font-weight: 800; font-size: 18px; text-align: center; max-width: 90vw; z-index: 9; pointer-events: none; }
 </style>
 </head>
@@ -111,6 +120,13 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
         <button class="tb" type="button" id="undoBtn"><span class="ic">&#8617;&#65039;</span>Undo</button>
         <button class="tb" type="button" id="clearBtn"><span class="ic">&#128465;&#65039;</span>Start over</button>
       </div>
+      <h2>DREW IT ON PAPER OR A WALL?</h2>
+      <div class="row two">
+        <button class="tb" type="button" id="camBtn"><span class="ic">&#128247;</span>Take a photo</button>
+        <button class="tb" type="button" id="picBtn"><span class="ic">&#128444;&#65039;</span>Pick a photo</button>
+      </div>
+      <input class="fileIn" type="file" id="camInput" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+      <input class="fileIn" type="file" id="picInput" accept="image/*" tabindex="-1" aria-hidden="true">
       <h2>WHAT DID YOU DRAW?</h2>
       <div class="row two" id="kindRow">
         <button class="tb on" type="button" data-kind="creature"><span class="ic">&#128062;</span>Creature or person</button>
@@ -126,6 +142,21 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
       </div>
       <button id="createBtn" type="button">&#10024; CREATE!</button>
     </div>
+  </div>
+</div>
+
+<div id="photo" hidden>
+  <div class="top">
+    <button class="back" id="photoBack" type="button" style="background:none;border:0;padding:0">&larr; Back</button>
+    <h1>Your photo</h1>
+    <span style="width:52px"></span>
+  </div>
+  <p id="photoTip">Drag a box around the drawing. The wall will disappear!</p>
+  <div class="photoBox"><canvas id="photoView" width="10" height="10"></canvas></div>
+  <div class="photoBar">
+    <label for="sens">Faint lines <input type="range" id="sens" min="0" max="100" value="50"> Only dark lines</label>
+    <button class="chip" id="wholeBtn" type="button">Use whole photo</button>
+    <button class="bigChip" id="usePhotoBtn" type="button">&#10004; Use this drawing</button>
   </div>
 </div>
 
@@ -327,6 +358,169 @@ function dilate(mask, W, H, r) {
   }
   return out;
 }
+
+// ======================================================================
+// Photo of a drawing (paper, wall, whiteboard...) -> drawing on the paper
+// ======================================================================
+const photo = { src: null, rect: null, sens: 0.5, result: null, drag: null };
+const pview = $('photoView'), pvctx = pview.getContext('2d');
+
+function openPhotoPicker(camera) { Sound.init(); const inp = camera ? $('camInput') : $('picInput'); inp.value = ''; inp.click(); }
+$('camBtn').addEventListener('click', () => openPhotoPicker(true));
+$('picBtn').addEventListener('click', () => openPhotoPicker(false));
+for (const id of ['camInput', 'picInput']) $(id).addEventListener('change', e => { const f = e.target.files && e.target.files[0]; if (f) loadPhotoFile(f); });
+
+async function loadPhotoFile(file) {
+  const url = URL.createObjectURL(file);
+  let im;
+  try { im = await loadImage(url); } catch (e) { toast('That photo could not be opened. Try another one.'); return; }
+  finally { setTimeout(() => URL.revokeObjectURL(url), 1000); }
+  const sc = Math.min(1, 1280 / Math.max(im.naturalWidth || im.width, im.naturalHeight || im.height));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round((im.naturalWidth || im.width) * sc)); c.height = Math.max(1, Math.round((im.naturalHeight || im.height) * sc));
+  c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+  photo.src = c;
+  photo.rect = { x: c.width * 0.06, y: c.height * 0.06, w: c.width * 0.88, h: c.height * 0.88 };
+  pview.width = c.width; pview.height = c.height;
+  $('draw').hidden = true; $('photo').hidden = false;
+  refreshExtract();
+}
+function closePhoto() { $('photo').hidden = true; $('draw').hidden = false; photo.src = null; photo.result = null; }
+$('photoBack').addEventListener('click', closePhoto);
+$('wholeBtn').addEventListener('click', () => { if (!photo.src) return; photo.rect = { x: 0, y: 0, w: photo.src.width, h: photo.src.height }; refreshExtract(); });
+$('sens').addEventListener('input', e => { photo.sens = e.target.value / 100; refreshExtract(); });
+
+function refreshExtract() {
+  const r = photo.rect;
+  photo.result = r && r.w > 8 && r.h > 8 ? extractDrawing(photo.src, r, photo.sens) : null;
+  renderPhotoView();
+}
+function renderPhotoView() {
+  if (!photo.src) return;
+  const r = photo.rect;
+  pvctx.drawImage(photo.src, 0, 0);
+  pvctx.fillStyle = 'rgba(0,0,0,.55)'; pvctx.fillRect(0, 0, pview.width, pview.height);
+  if (!r) return;
+  if (photo.drag || !photo.result) pvctx.drawImage(photo.src, r.x, r.y, r.w, r.h, r.x, r.y, r.w, r.h);
+  else { // show what the game found, on white paper
+    pvctx.fillStyle = '#fff'; pvctx.fillRect(r.x, r.y, r.w, r.h);
+    pvctx.drawImage(photo.result.canvas, r.x, r.y, r.w, r.h);
+  }
+  const lw = Math.max(3, pview.width / 200);
+  pvctx.lineWidth = lw; pvctx.strokeStyle = '#ffcf3f'; pvctx.setLineDash([lw * 3, lw * 2]);
+  pvctx.strokeRect(r.x, r.y, r.w, r.h); pvctx.setLineDash([]);
+}
+function viewXY(e) { const b = pview.getBoundingClientRect(); return [(e.clientX - b.left) * pview.width / b.width, (e.clientY - b.top) * pview.height / b.height]; }
+pview.addEventListener('pointerdown', e => {
+  e.preventDefault(); try { pview.setPointerCapture(e.pointerId); } catch (_) {}
+  const [x, y] = viewXY(e); photo.drag = { x0: x, y0: y, id: e.pointerId, prev: photo.rect };
+});
+pview.addEventListener('pointermove', e => {
+  const g = photo.drag; if (!g || g.id !== e.pointerId) return;
+  const [x, y] = viewXY(e);
+  const x0 = clamp(Math.min(g.x0, x), 0, pview.width), y0 = clamp(Math.min(g.y0, y), 0, pview.height);
+  const x1 = clamp(Math.max(g.x0, x), 0, pview.width), y1 = clamp(Math.max(g.y0, y), 0, pview.height);
+  photo.rect = { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+  renderPhotoView();
+});
+const endPhotoDrag = e => {
+  const g = photo.drag; if (!g || g.id !== e.pointerId) return;
+  photo.drag = null;
+  const tiny = Math.max(pview.width, pview.height) * 0.04;
+  if (!photo.rect || photo.rect.w < tiny || photo.rect.h < tiny) photo.rect = g.prev; // a tap, not a box
+  refreshExtract();
+};
+pview.addEventListener('pointerup', endPhotoDrag);
+pview.addEventListener('pointercancel', endPhotoDrag);
+
+// Finds the crayon or pen marks in part of a photo and removes the wall or paper around them.
+// sens 0..1: higher keeps only darker, stronger lines.
+function extractDrawing(src, r, sens) {
+  const sc = Math.min(1, 600 / Math.max(r.w, r.h));
+  const W = Math.max(8, Math.round(r.w * sc)), H = Math.max(8, Math.round(r.h * sc)), n = W * H;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(src, r.x, r.y, r.w, r.h, 0, 0, W, H);
+  const img = cx.getImageData(0, 0, W, H), d = img.data;
+  const lum = i => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // the wall colour: median of the box edges
+  const edge = [[], [], []];
+  for (let x = 0; x < W; x += 2) for (const y of [0, 1, H - 2, H - 1]) { const i = (y * W + x) * 4; edge[0].push(d[i]); edge[1].push(d[i + 1]); edge[2].push(d[i + 2]); }
+  for (let y = 0; y < H; y += 2) for (const x of [0, 1, W - 2, W - 1]) { const i = (y * W + x) * 4; edge[0].push(d[i]); edge[1].push(d[i + 1]); edge[2].push(d[i + 2]); }
+  const med = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
+  const wall = edge.map(med), wallL = Math.max(8, 0.299 * wall[0] + 0.587 * wall[1] + 0.114 * wall[2]);
+  // the wall changes with light and shadow, so also measure it block by block (the brighter pixels in each block)
+  const B = Math.max(12, Math.round(Math.max(W, H) / 9)), bw = Math.ceil(W / B), bh = Math.ceil(H / B);
+  const blk = new Float32Array(bw * bh * 3);
+  for (let by = 0; by < bh; by++) for (let bx = 0; bx < bw; bx++) {
+    const px = [];
+    for (let y = by * B; y < Math.min(H, by * B + B); y += 2) for (let x = bx * B; x < Math.min(W, bx * B + B); x += 2) px.push((y * W + x) * 4);
+    px.sort((p, q) => lum(p) - lum(q));
+    const i = px[Math.floor(px.length * 0.8)];
+    let col = [d[i], d[i + 1], d[i + 2]];
+    // a shadow is the same colour as the wall, only darker; a coloured-in block changes the colour itself
+    const l = Math.max(8, 0.299 * col[0] + 0.587 * col[1] + 0.114 * col[2]);
+    const hueOff = Math.max(Math.abs(col[0] / l - wall[0] / wallL), Math.abs(col[1] / l - wall[1] / wallL), Math.abs(col[2] / l - wall[2] / wallL));
+    if (hueOff > 0.18 || l < wallL * 0.45) col = wall; // block is mostly drawing
+    blk.set(col, (by * bw + bx) * 3);
+  }
+  const bgAt = (x, y, out) => {
+    const fx = clamp((x + 0.5) / B - 0.5, 0, bw - 1), fy = clamp((y + 0.5) / B - 0.5, 0, bh - 1);
+    const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(bw - 1, x0 + 1), y1 = Math.min(bh - 1, y0 + 1), tx = fx - x0, ty = fy - y0;
+    for (let k = 0; k < 3; k++) {
+      const a = blk[(y0 * bw + x0) * 3 + k], b = blk[(y0 * bw + x1) * 3 + k], cc = blk[(y1 * bw + x0) * 3 + k], dd = blk[(y1 * bw + x1) * 3 + k];
+      out[k] = (a * (1 - tx) + b * tx) * (1 - ty) + (cc * (1 - tx) + dd * tx) * ty;
+    }
+  };
+  const th = 0.62 - sens * 0.42 + 0.1; // how different from the wall a pixel must be
+  const alpha = new Float32Array(n), bg = [0, 0, 0];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const p = y * W + x, i = p * 4;
+    bgAt(x, y, bg);
+    const wr = d[i] / Math.max(8, bg[0]), wg = d[i + 1] / Math.max(8, bg[1]), wb = d[i + 2] / Math.max(8, bg[2]);
+    const dark = 1 - (0.299 * wr + 0.587 * wg + 0.114 * wb);
+    const tint = Math.max(wr, wg, wb) - Math.min(wr, wg, wb);
+    const score = Math.max(dark * 2.2, tint * 1.7);
+    const t = clamp((score - th * 0.75) / (th * 0.4), 0, 1);
+    alpha[p] = t * t * (3 - 2 * t);
+    // colour as if lit evenly on white paper, a little more vivid
+    let R = clamp(wr * 255, 0, 255), G = clamp(wg * 255, 0, 255), Bc = clamp(wb * 255, 0, 255);
+    const m = (R + G + Bc) / 3;
+    d[i] = clamp(m + (R - m) * 1.35, 0, 255); d[i + 1] = clamp(m + (G - m) * 1.35, 0, 255); d[i + 2] = clamp(m + (Bc - m) * 1.35, 0, 255);
+  }
+  // drop tiny specks (dust, wall bumps)
+  const seen = new Uint8Array(n), kept = new Uint8Array(n), q = new Int32Array(n), minSize = Math.max(14, n * 0.0006);
+  let found = 0;
+  for (let s0 = 0; s0 < n; s0++) {
+    if (seen[s0] || alpha[s0] < 0.5) continue;
+    let qh = 0, qt = 0; q[qt++] = s0; seen[s0] = 1;
+    while (qh < qt) {
+      const p = q[qh++], x = p % W;
+      for (const nb of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (nb >= 0 && nb < n && !seen[nb] && alpha[nb] >= 0.5) { seen[nb] = 1; q[qt++] = nb; }
+    }
+    if (qt < minSize) for (let k = 0; k < qt; k++) alpha[q[k]] = 0;
+    else { found += qt; for (let k = 0; k < qt; k++) kept[q[k]] = 1; }
+  }
+  const near = dilate(kept, W, H, 2); // soft edges only right next to real lines
+  for (let p = 0; p < n; p++) { const a = near[p] ? alpha[p] : 0; d[p * 4 + 3] = a < 0.1 ? 0 : Math.round(a * 255); }
+  cx.putImageData(img, 0, 0);
+  return { canvas: c, coverage: found / n };
+}
+
+$('usePhotoBtn').addEventListener('click', () => {
+  const res = photo.result;
+  if (!res || res.coverage < 0.002) { toast('I can\'t find a drawing in the box. Try a bigger box, or slide toward "Faint lines".', 3200); return; }
+  pushUndo();
+  pctx.clearRect(0, 0, paper.width, paper.height);
+  const c = res.canvas, f = Math.min(paper.width * 0.9 / c.width, paper.height * 0.9 / c.height);
+  const w = c.width * f, h = c.height * f;
+  pctx.imageSmoothingQuality = 'high';
+  pctx.drawImage(c, (paper.width - w) / 2, (paper.height - h) / 2, w, h);
+  markDrawn();
+  closePhoto();
+  Sound.magic();
+  toast('Here it is! Color it in, or tap CREATE!', 2600);
+});
 
 // ======================================================================
 // Drawing -> 3D
