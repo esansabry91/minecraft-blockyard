@@ -102,6 +102,22 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
 #resList .dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); }
 #resList .tm { color: var(--ink-dim); font-variant-numeric: tabular-nums; }
 #resTitle { font-size: 22px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fields label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 13px; color: var(--ink-dim); }
+.fields input { font: 800 17px var(--font-body); padding: 10px 12px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 8px; min-width: 0; }
+.fields input:focus { outline: 3px solid var(--accent); }
+.wide { width: 100%; margin-top: 12px; }
+button.back { background: none; border: 0; padding: 0; cursor: pointer; }
+#roomPeers { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+#roomPeers li { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 3px solid var(--line); border-radius: 8px; padding: 6px 8px; font-weight: 800; }
+#roomPeers img { width: 52px; height: 42px; object-fit: contain; }
+#roomPeers small { display: block; color: var(--ink-dim); font-weight: 600; font-size: 12px; }
+#roomPeers li.me { border-color: var(--accent); }
+#roomRacers { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+#roomRacers .stats { display: none; }
+#roomStatus { margin-top: 4px; }
+.bigBtn:disabled { opacity: .5; cursor: default; }
+.btn:disabled { opacity: .55; cursor: default; }
 #resBest { color: var(--accent); font-weight: 800; min-height: 1.2em; margin: 6px 0 0; }
 @media (max-height: 520px) {
   #pos { font-size: 32px; } #msg { font-size: 48px; top: 28%; }
@@ -158,6 +174,13 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
       <button class="pick" type="button" data-diff="hard">Super fast</button>
     </div>
     <button class="bigBtn" id="raceBtn" type="button">RACE!</button>
+    <h2>RACE YOUR FAMILY ONLINE</h2>
+    <div class="fields">
+      <label for="pname">Your name<input id="pname" type="text" maxlength="12" autocomplete="off"></label>
+      <label for="rcode">Room code<input id="rcode" type="text" maxlength="20" autocomplete="off"></label>
+    </div>
+    <p class="lead" style="margin-top:8px;font-size:14px">Everyone opens Zoom Karts on their own phone, tablet or computer, types the same room code and taps Join room.</p>
+    <button class="btn primary wide" id="joinBtn" type="button">JOIN ROOM</button>
     <h2>HOW TO PLAY</h2>
     <dl class="keys" id="keysDesk">
       <dt>&uarr; or W</dt><dd>Go</dd>
@@ -189,6 +212,34 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
   </div>
 </div>
 
+<div id="room" class="screen" hidden>
+  <div class="panel">
+    <button class="back" id="leaveRoomBtn" type="button">&larr; Leave room</button>
+    <h1 id="roomTitle">Room</h1>
+    <p class="lead" id="roomStatus"></p>
+    <h2>WHO IS HERE</h2>
+    <ul id="roomPeers"></ul>
+    <h2>YOUR RACER</h2>
+    <div class="grid" id="roomRacers"></div>
+    <div id="hostBox" hidden>
+      <h2>CHOOSE A TRACK</h2>
+      <div class="seg" id="roomTracks"></div>
+      <h2>COMPUTER RACERS TOO?</h2>
+      <div class="seg" id="roomCpus">
+        <button class="pick" type="button" data-cpus="1">Yes, add them</button>
+        <button class="pick" type="button" data-cpus="0">No, just us</button>
+      </div>
+      <h2>HOW FAST ARE THE COMPUTER RACERS?</h2>
+      <div class="seg" id="roomDiffs">
+        <button class="pick" type="button" data-diff="easy">Easy</button>
+        <button class="pick" type="button" data-diff="normal">Normal</button>
+        <button class="pick" type="button" data-diff="hard">Super fast</button>
+      </div>
+      <button class="bigBtn" id="startNetBtn" type="button">START RACE!</button>
+    </div>
+  </div>
+</div>
+
 <div id="results" class="screen" hidden>
   <div class="panel small-panel">
     <h1 id="resTitle">You came 1st!</h1>
@@ -198,11 +249,14 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
       <button class="btn primary" id="againBtn" type="button">Race again</button>
       <button class="btn" id="nextBtn" type="button">Next track</button>
       <button class="btn" id="menuBtn" type="button">Menu</button>
+      <button class="btn primary" id="roomBtn" type="button" hidden>Back to the room</button>
     </div>
   </div>
 </div>
 
 <script src="../shared/three.r128.min.js"></script>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/peer-room.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -663,12 +717,13 @@ const Sound = {
 function updateMuteBtn() { $('muteBtn').style.opacity = Sound.muted ? 0.45 : 1; $('muteBtn').setAttribute('aria-pressed', String(!Sound.muted)); }
 
 // ---------- Race state ----------
-let state = 'menu'; // menu | countdown | race | finished | paused
+let state = 'menu'; // menu | room | countdown | race | finished | paused | results
 let pausedFrom = null;
 let sel = {
   track: store.get('zoomkarts-track', 'meadow'),
   racer: store.get('zoomkarts-racer', 'ruby'),
   diff: store.get('zoomkarts-diff', 'normal'),
+  cpus: store.get('zoomkarts-cpus', true),
 };
 if (!TRACKS.some(t => t.id === sel.track)) sel.track = 'meadow';
 if (!CHARACTERS.some(c => c.id === sel.racer)) sel.racer = 'ruby';
@@ -676,21 +731,34 @@ if (!DIFFS[sel.diff]) sel.diff = 'normal';
 
 let race = null;
 
-function startRace() {
-  const def = TRACKS.find(t => t.id === sel.track);
-  const built = buildWorld(def);
-  const td = built.td;
+function soloRoster() {
   const me = CHARACTERS.find(c => c.id === sel.racer);
   const order = CHARACTERS.filter(c => c !== me);
   order.splice(3, 0, me); // you start in 4th place
-  const karts = order.map((ch, k) => {
+  return order.map((ch, i) => ({ id: ch === me ? 'me' : 'cpu' + i, ch: ch.id, name: ch.name, owner: 'local', cpu: ch !== me }));
+}
+function startRace() {
+  beginRace({ track: sel.track, diff: sel.diff, roster: soloRoster(), raceId: 'solo' }, 'me', 'local');
+}
+
+// cfg: { track, diff, roster: [{ id, ch, name, owner, cpu }] in grid order, raceId }
+function beginRace(cfg, myKartId, myOwner) {
+  const def = TRACKS.find(t => t.id === cfg.track) || TRACKS[0];
+  const built = buildWorld(def);
+  const td = built.td;
+  const multi = cfg.raceId !== 'solo';
+  const karts = cfg.roster.map((r, k) => {
+    const ch = CHARACTERS.find(c => c.id === r.ch) || CHARACTERS[0];
     const row = Math.floor(k / 2), side = k % 2 ? 1 : -1;
-    const ti = (N - 5 - row * 6) % N;
+    const ti = (N - 5 - row * 6 + N) % N;
     const pos = td.P[ti].clone().addScaledVector(td.Nm[ti], side * 3.6);
     const mesh = makeKart(ch);
+    const isPlayer = r.id === myKartId;
+    if (multi && !isPlayer) mesh.add(nameTag(r.name, r.cpu ? '#c9bb9c' : '#ffcf3f'));
     world.add(mesh);
     return {
-      ch, mesh, isPlayer: ch === me, st: statsOf(ch), pos, heading: Math.atan2(td.T[ti].x, td.T[ti].z),
+      id: r.id, name: r.name, owner: r.owner, cpu: !!r.cpu, local: r.owner === myOwner, net: null, netAt: performance.now(),
+      ch, mesh, isPlayer, st: statsOf(ch), pos, heading: Math.atan2(td.T[ti].x, td.T[ti].z),
       speed: 0, ti, lap: 0, progress: 0, place: k + 1, finished: false, finishTime: 0,
       item: null, rolling: 0, boost: 0, boostColor: 0xff9800, star: 0, spin: 0, spinAngle: 0, drift: 0, driftCharge: 0, hop: 0, slide: 0,
       bump: 0, ai: { lane: (Math.random() - 0.5) * 6, laneT: 0, itemT: 1 + Math.random() * 3, skill: 0.97 + Math.random() * 0.06 },
@@ -709,18 +777,35 @@ function startRace() {
   }
   race = {
     def, td, pads: built.pads, karts, player: karts.find(k => k.isPlayer), boxes, bananas: [], balls: [],
-    time: 0, countdown: 3.6, lastCount: 4, resultsT: -1, finalLapShown: false, camH: karts[0].heading,
+    time: 0, countdown: 3.6, lastCount: 4, resultsT: -1, finalLapShown: false, camH: 0,
+    multi, raceId: cfg.raceId, diff: DIFFS[cfg.diff] ? cfg.diff : 'normal', myOwner, sendT: 0, itemSeq: 0, menuOpen: false, resRefreshT: 0, allDoneT: -1,
+    byId: Object.fromEntries(karts.map(k => [k.id, k])),
   };
   race.camH = race.player.heading;
   placeCamera(true);
   hideAll(); $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+  $('restartBtn').hidden = multi; $('quitBtn').textContent = multi ? 'Leave this race' : 'Pick another track or racer';
   setMsg(''); $('hint').textContent = '';
   setItemIcon(null, false);
   state = 'countdown';
+  if (multi && net) net.room.presence({ racing: true });
   Sound.init(); Sound.engineOn();
 }
 
-function hideAll() { for (const id of ['menu', 'pause', 'results']) $(id).hidden = true; }
+function nameTag(text, color) {
+  const tex = canvasTex(256, 64, (x, w, h) => {
+    x.font = '800 32px Nunito, system-ui, sans-serif';
+    const tw = Math.min(w - 4, x.measureText(text).width + 30);
+    x.fillStyle = 'rgba(18,24,43,.78)';
+    x.beginPath(); const l = (w - tw) / 2, r = 18; x.moveTo(l + r, 6); x.arcTo(l + tw, 6, l + tw, h - 6, r); x.arcTo(l + tw, h - 6, l, h - 6, r); x.arcTo(l, h - 6, l, 6, r); x.arcTo(l, 6, l + tw, 6, r); x.fill();
+    x.fillStyle = color; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(text, w / 2, h / 2 + 2);
+  });
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.set(4.4, 1.1, 1); sp.position.y = 3.5; sp.renderOrder = 5;
+  return sp;
+}
+
+function hideAll() { for (const id of ['menu', 'room', 'pause', 'results']) $(id).hidden = true; }
 
 // ---------- Input ----------
 const keys = {};
@@ -746,6 +831,7 @@ holdBtn('bLeft', 'left'); holdBtn('bRight', 'right'); holdBtn('bBrake', 'brake')
 $('bItem').addEventListener('pointerdown', e => { e.preventDefault(); touch.used = true; if (state === 'race') wantItem = true; });
 
 function playerInput() {
+  if (race.menuOpen) { wantItem = false; return { steer: 0, gas: false, brake: false, drift: false, item: false }; }
   const left = keys.ArrowLeft || keys.KeyA || touch.left, right = keys.ArrowRight || keys.KeyD || touch.right;
   const brake = keys.ArrowDown || keys.KeyS || touch.brake;
   const gas = keys.ArrowUp || keys.KeyW || (touch.used && !touch.brake);
@@ -801,19 +887,80 @@ function useItem(k) {
   if (it === 'boost') { k.boost = Math.max(k.boost, 1.4); k.boostColor = 0xff6d00; if (k.isPlayer) Sound.tone(200, 0.5, 'sawtooth', 0.12, 500); }
   else if (it === 'star') { k.star = 6; if (k.isPlayer) [523, 659, 784, 1047].forEach((f, i) => Sound.tone(f, 0.18, 'square', 0.08, 0, i * 0.08)); }
   else if (it === 'banana') {
-    const mesh = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.25, 8, 14, Math.PI * 1.1), M(0xffd600));
-    mesh.rotation.z = Math.PI * 0.95;
-    const g = new THREE.Group(); g.add(mesh); mesh.position.y = 0.55;
-    const pos = k.pos.clone().addScaledVector(dir, -3.2); g.position.copy(pos); world.add(g);
-    race.bananas.push({ pos, mesh: g, age: 0 });
+    const pos = k.pos.clone().addScaledVector(dir, -3.2);
+    const b = { id: race.myOwner + ':' + (++race.itemSeq), x: +pos.x.toFixed(2), z: +pos.z.toFixed(2) };
+    spawnBanana(b); netSend('ban', b);
     if (k.isPlayer) Sound.tone(300, 0.15, 'triangle', 0.15, -120);
   } else if (it === 'ball') {
     const target = race.karts.find(o => o.place === k.place - 1 && !o.finished) || null;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.75, 14, 10), new THREE.MeshLambertMaterial({ color: 0x2ecc71, emissive: 0x0b5d2a }));
-    const pos = k.pos.clone().addScaledVector(dir, 3); pos.y = 0.8; mesh.position.copy(pos); world.add(mesh);
-    race.balls.push({ pos, mesh, owner: k, target, life: 7, ti: k.ti, lat: lateralOf(race.td, k.pos, k.ti), age: 0 });
+    const pos = k.pos.clone().addScaledVector(dir, 3);
+    const b = { id: race.myOwner + ':' + (++race.itemSeq), owner: k.id, target: target ? target.id : null, x: +pos.x.toFixed(2), z: +pos.z.toFixed(2), ti: k.ti, lat: +lateralOf(race.td, k.pos, k.ti).toFixed(2) };
+    spawnBall(b); netSend('ball', b);
     if (k.isPlayer) Sound.tone(500, 0.2, 'square', 0.1, 300);
   }
+}
+
+function spawnBanana(b) {
+  if (race.bananas.some(o => o.id === b.id)) return;
+  const mesh = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.25, 8, 14, Math.PI * 1.1), M(0xffd600));
+  mesh.rotation.z = Math.PI * 0.95;
+  const g = new THREE.Group(); g.add(mesh); mesh.position.y = 0.55;
+  const pos = new THREE.Vector3(b.x, 0, b.z); g.position.copy(pos); world.add(g);
+  race.bananas.push({ id: b.id, pos, mesh: g, age: 0 });
+}
+function removeBanana(id) {
+  const i = race.bananas.findIndex(o => o.id === id); if (i < 0) return;
+  const b = race.bananas[i]; world.remove(b.mesh); disposeGroup(b.mesh); race.bananas.splice(i, 1);
+}
+function spawnBall(b) {
+  if (race.balls.some(o => o.id === b.id)) return;
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.75, 14, 10), new THREE.MeshLambertMaterial({ color: 0x2ecc71, emissive: 0x0b5d2a }));
+  const pos = new THREE.Vector3(b.x, 0.8, b.z); mesh.position.copy(pos); world.add(mesh);
+  race.balls.push({ id: b.id, pos, mesh, owner: race.byId[b.owner] || null, target: race.byId[b.target] || null, life: 7, ti: b.ti, lat: b.lat, age: 0 });
+}
+function removeBall(id) {
+  const i = race.balls.findIndex(o => o.id === id); if (i < 0) return;
+  const b = race.balls[i]; world.remove(b.mesh); disposeGroup(b.mesh); race.balls.splice(i, 1);
+}
+
+// ---------- Multiplayer messages during a race ----------
+function netSend(topic, data) {
+  if (race && race.multi && net) net.room.emit(topic, Object.assign({ r: race.raceId }, data));
+}
+function sendStates() {
+  const list = [];
+  for (const k of race.karts) if (k.local) {
+    const fl = (k.spin > 0 ? 1 : 0) | (k.star > 0 ? 2 : 0) | (k.boost > 0 ? 4 : 0) | (k.driftCharge > 0.8 ? 8 : 0) | (k.driftCharge > 1.7 ? 16 : 0);
+    list.push([k.id, +k.pos.x.toFixed(2), +k.pos.z.toFixed(2), +k.heading.toFixed(3), +k.speed.toFixed(1), k.ti, k.lap, fl, k.drift, k.finished ? +k.finishTime.toFixed(2) : 0]);
+  }
+  netSend('s', { k: list });
+}
+function onNetState(d) {
+  if (!race || !d || d.r !== race.raceId || !Array.isArray(d.k)) return;
+  const now = performance.now();
+  for (const a of d.k) {
+    const k = race.byId[a[0]];
+    if (!k || k.local) continue;
+    k.net = { x: +a[1] || 0, z: +a[2] || 0, h: +a[3] || 0, sp: +a[4] || 0, ti: (a[5] | 0) % N, lap: a[6] | 0, fl: a[7] | 0, d: Math.sign(a[8] | 0), ft: +a[9] || 0 };
+    k.netAt = now;
+  }
+}
+function remoteStep(k, dt) {
+  const n = k.net;
+  k.gone = !k.finished && performance.now() - k.netAt > 6000;
+  k.mesh.visible = !k.gone;
+  if (!n) return;
+  const age = Math.min(0.25, (performance.now() - k.netAt) / 1000);
+  const tx = n.x + Math.sin(n.h) * n.sp * age, tz = n.z + Math.cos(n.h) * n.sp * age;
+  const f = 1 - Math.pow(0.0005, dt);
+  if ((tx - k.pos.x) ** 2 + (tz - k.pos.z) ** 2 > 400) { k.pos.x = tx; k.pos.z = tz; k.heading = n.h; }
+  else { k.pos.x += (tx - k.pos.x) * f; k.pos.z += (tz - k.pos.z) * f; k.heading += wrapAngle(n.h - k.heading) * f; }
+  k.speed = n.sp; k.ti = n.ti; k.lap = n.lap; k.progress = k.lap * N + k.ti;
+  k.spin = n.fl & 1 ? 0.2 : 0; k.spinAngle = k.spin ? k.spinAngle + dt * 14 : 0;
+  k.star = n.fl & 2 ? 0.2 : 0; k.boost = n.fl & 4 ? 0.2 : 0;
+  k.drift = n.d; k.driftCharge = n.fl & 16 ? 2 : n.fl & 8 ? 1 : n.d ? 0.5 : 0;
+  k.slide += ((k.drift ? -k.drift * 0.38 : 0) - k.slide) * Math.min(1, dt * 8);
+  if (n.ft > 0 && !k.finished) { k.finished = true; k.finishTime = n.ft; }
 }
 
 function hitKart(k) {
@@ -908,19 +1055,21 @@ function updateRace(dt) {
   } else {
     race.time += dt;
   }
-  const running = state === 'race' || state === 'finished';
+  const running = state === 'race' || state === 'finished' || state === 'results';
   if (race.msgT > 0) { race.msgT -= dt; if (race.msgT <= 0 && state !== 'finished') setMsg(''); }
 
   // rubber-band the computer racers a little so races stay exciting
-  const pp = race.player.progress;
+  let pp = -Infinity;
+  for (const k of karts) if (!k.cpu && !k.gone) pp = Math.max(pp, k.progress);
   for (const k of karts) {
-    if (k.isPlayer && !k.finished) continue;
+    if (!k.local || (k.isPlayer && !k.finished)) continue;
     const gap = (k.progress - pp) / N;
-    k.cpuFactor = DIFFS[sel.diff] * k.ai.skill + clamp(-gap * 0.3, -0.07, 0.08);
+    k.cpuFactor = DIFFS[race.diff] * k.ai.skill + clamp(-gap * 0.3, -0.07, 0.08);
   }
 
   if (running) {
     for (const k of karts) {
+      if (!k.local) { remoteStep(k, dt); continue; }
       const inp = (k.isPlayer && !k.finished && !AUTOPILOT) ? playerInput() : aiInput(k, dt);
       stepKart(k, inp, dt);
     }
@@ -930,38 +1079,43 @@ function updateRace(dt) {
       if (k.rolling <= 0) { k.item = rollItem(k); if (k.isPlayer) Sound.tone(660, 0.12, 'square', 0.1, 200); }
     }
     // kart bumps
+    // (each device only moves and spins the karts it drives itself)
     for (let a = 0; a < karts.length; a++) for (let b = a + 1; b < karts.length; b++) {
       const A = karts[a], B = karts[b];
+      if ((!A.local && !B.local) || A.gone || B.gone) continue;
       const dx = B.pos.x - A.pos.x, dz = B.pos.z - A.pos.z, d2 = dx * dx + dz * dz;
       if (d2 < 4.8 && d2 > 1e-6) {
-        const d = Math.sqrt(d2), push = (2.2 - d) / 2, nx = dx / d, nz = dz / d;
-        A.pos.x -= nx * push; A.pos.z -= nz * push; B.pos.x += nx * push; B.pos.z += nz * push;
-        if (A.star > 0 && B.star <= 0) hitKart(B); else if (B.star > 0 && A.star <= 0) hitKart(A);
+        const d = Math.sqrt(d2), nx = dx / d, nz = dz / d;
+        const push = (2.2 - d) / (A.local && B.local ? 2 : 1);
+        if (A.local) { A.pos.x -= nx * push; A.pos.z -= nz * push; }
+        if (B.local) { B.pos.x += nx * push; B.pos.z += nz * push; }
+        if (A.star > 0 && B.star <= 0 && B.local) hitKart(B); else if (B.star > 0 && A.star <= 0 && A.local) hitKart(A);
       }
     }
+    if (race.multi) { race.sendT -= dt; if (race.sendT <= 0) { race.sendT = 1 / 12; sendStates(); } }
   }
 
   // item boxes
-  for (const b of race.boxes) {
+  race.boxes.forEach((b, bi) => {
     b.spin += dt * 1.6;
     b.mesh.rotation.set(0.5, b.spin, 0.3); b.mesh.position.y = 1.5 + Math.sin(b.spin * 1.5) * 0.25;
-    if (b.cool > 0) { b.cool -= dt; b.mesh.visible = b.cool <= 0; b.mesh.scale.setScalar(1); continue; }
-    if (!running) continue;
+    if (b.cool > 0) { b.cool -= dt; b.mesh.visible = b.cool <= 0; return; }
+    if (!running) return;
     for (const k of karts) {
-      if ((k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 5.5) {
-        b.cool = 2.5; b.mesh.visible = false;
+      if (k.local && (k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 5.5) {
+        b.cool = 2.5; b.mesh.visible = false; netSend('box', { i: bi });
         if (!k.item && k.rolling <= 0) { k.rolling = k.isPlayer ? 1.1 : 0.6; if (k.isPlayer) Sound.tone(880, 0.08, 'square', 0.08, 0); }
         break;
       }
     }
-  }
+  });
 
   // bananas
   for (let i = race.bananas.length - 1; i >= 0; i--) {
     const b = race.bananas[i]; b.age += dt; b.mesh.rotation.y += dt;
     for (const k of karts) {
-      if (b.age > 0.3 && (k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 3.6) {
-        hitKart(k); world.remove(b.mesh); disposeGroup(b.mesh); race.bananas.splice(i, 1); break;
+      if (k.local && b.age > 0.3 && (k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 3.6) {
+        hitKart(k); netSend('banx', { id: b.id }); removeBanana(b.id); break;
       }
     }
   }
@@ -985,15 +1139,15 @@ function updateRace(dt) {
       b.pos.y = 0.8 + Math.abs(Math.sin(b.age * 9)) * 0.9;
       b.mesh.position.copy(b.pos);
       for (const k of karts) {
-        if (k === b.owner && b.age < 0.6) continue;
-        if ((k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 5) { hitKart(k); gone = true; break; }
+        if (!k.local || (k === b.owner && b.age < 0.6)) continue;
+        if ((k.pos.x - b.pos.x) ** 2 + (k.pos.z - b.pos.z) ** 2 < 5) { hitKart(k); netSend('ballx', { id: b.id }); gone = true; break; }
       }
     }
-    if (gone) { world.remove(b.mesh); disposeGroup(b.mesh); race.balls.splice(i, 1); }
+    if (gone) removeBall(b.id);
   }
 
   // places
-  const sorted = karts.slice().sort((a, b) => (b.finished - a.finished) || (a.finished ? a.finishTime - b.finishTime : b.progress - a.progress));
+  const sorted = karts.slice().sort((a, b) => (b.finished - a.finished) || (a.finished ? a.finishTime - b.finishTime : ((!!a.gone - !!b.gone) || b.progress - a.progress)));
   sorted.forEach((k, i) => k.place = i + 1);
 
   if (running && !race.finalLapShown && race.player.lap === LAPS && LAPS > 1) {
@@ -1001,6 +1155,10 @@ function updateRace(dt) {
     [660, 880].forEach((f, i) => Sound.tone(f, 0.15, 'square', 0.09, 0, i * 0.12));
   }
   if (race.resultsT > 0) { race.resultsT -= dt; if (race.resultsT <= 0) showResults(); }
+  if (state === 'results' && race.multi) {
+    race.resRefreshT -= dt;
+    if (race.resRefreshT <= 0) { race.resRefreshT = 0.5; fillResults(); }
+  }
 
   // visuals
   for (const k of karts) {
@@ -1068,50 +1226,74 @@ function showResults() {
   state = 'results';
   Sound.engineOff();
   const p = race.player;
-  const trophy = p.place === 1 ? '🏆 ' : p.place === 2 ? '🥈 ' : p.place === 3 ? '🥉 ' : '';
-  $('resTitle').textContent = `${trophy}You came ${p.place}${ordinal(p.place)}!`;
   const bests = store.get('zoomkarts-best', {});
   const prev = bests[race.def.id];
   if (p.finished && (prev == null || p.finishTime < prev)) {
     bests[race.def.id] = p.finishTime; store.set('zoomkarts-best', bests);
     $('resBest').textContent = prev == null ? `Best time: ${fmtTime(p.finishTime)}` : `New best time! ${fmtTime(p.finishTime)}`;
   } else $('resBest').textContent = prev != null ? `Best time: ${fmtTime(prev)}` : '';
+  for (const id of ['againBtn', 'nextBtn', 'menuBtn']) $(id).hidden = race.multi;
+  $('roomBtn').hidden = !race.multi;
+  fillResults();
+  $('pause').hidden = true; race.menuOpen = false;
+  $('hud').hidden = true; $('results').hidden = false;
+}
+function fillResults() {
+  const p = race.player;
+  const trophy = p.place === 1 ? '🏆 ' : p.place === 2 ? '🥈 ' : p.place === 3 ? '🥉 ' : '';
+  $('resTitle').textContent = `${trophy}You came ${p.place}${ordinal(p.place)}!`;
   const list = $('resList'); list.innerHTML = '';
   race.karts.slice().sort((a, b) => a.place - b.place).forEach(k => {
     const li = document.createElement('li'); if (k.isPlayer) li.className = 'me';
-    li.innerHTML = `<span class="pl">${k.place}${ordinal(k.place)}</span><span class="dot" style="background:${hex(k.ch.kart)}"></span><span></span><span class="tm">${k.finished ? fmtTime(k.finishTime) : '--'}</span>`;
-    li.children[2].textContent = k.ch.name + (k.isPlayer ? ' (you)' : '');
+    li.innerHTML = `<span class="pl">${k.place}${ordinal(k.place)}</span><span class="dot" style="background:${hex(k.ch.kart)}"></span><span></span><span class="tm"></span>`;
+    li.children[2].textContent = k.name + (k.isPlayer ? ' (you)' : '');
+    li.children[3].textContent = k.finished ? fmtTime(k.finishTime) : k.gone ? 'left' : race.multi ? `lap ${clamp(k.lap, 1, LAPS)}` : '--';
     list.appendChild(li);
   });
-  $('hud').hidden = true; $('results').hidden = false;
+  if (race.multi) {
+    const waiting = race.karts.filter(k => !k.cpu && !k.finished && !k.gone).length;
+    // the host drives the computer racers, so the host stays until everyone is done
+    const hold = waiting > 0 && race.karts.some(k => k.cpu && k.local);
+    $('roomBtn').disabled = hold;
+    $('roomBtn').textContent = hold ? `Waiting for ${waiting} to finish...` : 'Back to the room';
+  }
 }
 
 function pause() {
   if (state !== 'race' && state !== 'countdown' && state !== 'finished') return;
+  $('pause').hidden = false;
+  if (race.multi) { race.menuOpen = true; return; } // online races keep going for everyone else
   pausedFrom = state; state = 'paused';
   Sound.engineOff();
-  $('pause').hidden = false;
 }
 function resume() {
-  if (state !== 'paused') return;
-  state = pausedFrom; $('pause').hidden = true;
+  $('pause').hidden = true;
   for (const k in keys) keys[k] = false;
+  if (race && race.multi) { race.menuOpen = false; return; }
+  if (state !== 'paused') return;
+  state = pausedFrom;
   Sound.init(); if (state !== 'finished') Sound.engineOn();
   last = performance.now();
 }
+let bgTrack = sel.track; // track shown spinning behind the menu and room screens
+function showBackdrop(trackId) {
+  if (bgTrack !== trackId || race || !world) { bgTrack = trackId; buildWorld(TRACKS.find(t => t.id === trackId) || TRACKS[0]); }
+  race = null;
+}
 function showMenu() {
+  if (net) leaveRoom();
   state = 'menu'; Sound.engineOff();
   hideAll(); $('hud').hidden = true; $('menu').hidden = false;
-  buildWorld(TRACKS.find(t => t.id === sel.track));
-  race = null;
+  showBackdrop(sel.track);
 }
 $('pauseBtn').addEventListener('click', pause);
 $('muteBtn').addEventListener('click', () => { Sound.init(); Sound.setMuted(!Sound.muted); });
 $('resumeBtn').addEventListener('click', resume);
 $('restartBtn').addEventListener('click', startRace);
-$('quitBtn').addEventListener('click', showMenu);
+$('quitBtn').addEventListener('click', () => { if (race && race.multi) backToRoom(); else showMenu(); });
 $('againBtn').addEventListener('click', startRace);
 $('menuBtn').addEventListener('click', showMenu);
+$('roomBtn').addEventListener('click', backToRoom);
 $('nextBtn').addEventListener('click', () => {
   const i = TRACKS.findIndex(t => t.id === sel.track);
   sel.track = TRACKS[(i + 1) % TRACKS.length].id; store.set('zoomkarts-track', sel.track);
@@ -1121,6 +1303,21 @@ $('raceBtn').addEventListener('click', startRace);
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
 let pictures = null;
+const dots = n => '●'.repeat(n) + '○'.repeat(5 - n);
+function racerButtons(container, onPick) {
+  container.innerHTML = '';
+  for (const ch of CHARACTERS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (ch.id === sel.racer ? ' on' : '');
+    if (pictures[ch.id]) { const im = new Image(); im.alt = ''; im.src = pictures[ch.id]; b.appendChild(im); }
+    else { const sw = document.createElement('canvas'); sw.width = 10; sw.height = 8; sw.style.background = hex(ch.kart); b.appendChild(sw); }
+    b.appendChild(document.createTextNode(ch.name));
+    const s = document.createElement('div'); s.className = 'stats';
+    s.innerHTML = `<span>Speed</span><b>${dots(ch.speed)}</b><span>Zoom</span><b>${dots(ch.accel)}</b><span>Turn</span><b>${dots(ch.turn)}</b>`;
+    b.appendChild(s);
+    b.addEventListener('click', () => { sel.racer = ch.id; store.set('zoomkarts-racer', ch.id); onPick(); });
+    container.appendChild(b);
+  }
+}
 function renderMenu() {
   if (!pictures) pictures = racerPictures();
   const bests = store.get('zoomkarts-best', {});
@@ -1132,22 +1329,10 @@ function renderMenu() {
     b.appendChild(c);
     b.appendChild(document.createTextNode(t.name));
     const sm = document.createElement('small'); sm.textContent = bests[t.id] != null ? `${t.blurb} · best ${fmtTime(bests[t.id])}` : t.blurb; b.appendChild(sm);
-    b.addEventListener('click', () => { sel.track = t.id; store.set('zoomkarts-track', t.id); renderMenu(); buildWorld(t); });
+    b.addEventListener('click', () => { sel.track = t.id; store.set('zoomkarts-track', t.id); renderMenu(); showBackdrop(t.id); });
     tracks.appendChild(b);
   }
-  const racers = $('racers'); racers.innerHTML = '';
-  const dots = n => '●'.repeat(n) + '○'.repeat(5 - n);
-  for (const ch of CHARACTERS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (ch.id === sel.racer ? ' on' : '');
-    if (pictures[ch.id]) { const im = new Image(); im.alt = ''; im.src = pictures[ch.id]; b.appendChild(im); }
-    else { const sw = document.createElement('canvas'); sw.width = 10; sw.height = 8; sw.style.background = hex(ch.kart); b.appendChild(sw); }
-    b.appendChild(document.createTextNode(ch.name));
-    const s = document.createElement('div'); s.className = 'stats';
-    s.innerHTML = `<span>Speed</span><b>${dots(ch.speed)}</b><span>Zoom</span><b>${dots(ch.accel)}</b><span>Turn</span><b>${dots(ch.turn)}</b>`;
-    b.appendChild(s);
-    b.addEventListener('click', () => { sel.racer = ch.id; store.set('zoomkarts-racer', ch.id); renderMenu(); });
-    racers.appendChild(b);
-  }
+  racerButtons($('racers'), renderMenu);
   document.querySelectorAll('#diffs button').forEach(b => {
     b.classList.toggle('on', b.dataset.diff === sel.diff);
     b.onclick = () => { sel.diff = b.dataset.diff; store.set('zoomkarts-diff', sel.diff); renderMenu(); };
@@ -1155,18 +1340,157 @@ function renderMenu() {
   $('keysDesk').hidden = IS_TOUCH; $('keysTouch').hidden = !IS_TOUCH;
 }
 
+// ---------- Online room ----------
+let net = null; // { room, code, offs, peers }
+const cleanCode = v => (v || '').toLowerCase().replace(/[^a-z0-9_.-]/g, '').replace(/^[^a-z0-9]+/, '').slice(0, 20) || 'family';
+const cleanName = v => (v || '').trim().slice(0, 12) || 'Player';
+(function initOnlineFields() {
+  let n = store.get('zoomkarts-name', null);
+  if (!n) { try { n = localStorage.getItem('blockyard-name-v1'); } catch (e) { } } // reuse the name typed in Blockyard
+  $('pname').value = n || 'Player';
+  $('rcode').value = store.get('zoomkarts-room', 'family');
+})();
+
+async function joinRoom() {
+  const name = cleanName($('pname').value), code = cleanCode($('rcode').value);
+  store.set('zoomkarts-name', name); store.set('zoomkarts-room', code);
+  $('pname').value = name; $('rcode').value = code;
+  Sound.init();
+  hideAll(); $('room').hidden = false; state = 'room';
+  $('roomTitle').textContent = 'Room: ' + code.toUpperCase();
+  $('roomStatus').textContent = 'Connecting...';
+  $('roomPeers').innerHTML = ''; $('hostBox').hidden = true;
+  racerButtons($('roomRacers'), () => { renderRoom(); if (net) net.room.presence({ racer: sel.racer }); });
+  let room;
+  try {
+    if (!window.GameRoom) throw new Error('no room library');
+    room = await GameRoom.join('zoomkarts-' + code);
+  } catch (e) {
+    if (state === 'room') $('roomStatus').textContent = 'Could not connect. Check the internet, then go back and try again.';
+    return;
+  }
+  if (state !== 'room') { room.leave(); return; } // gave up while connecting
+  net = { room, code, offs: [], peers: [] };
+  room.presence({ name, racer: sel.racer, racing: false });
+  publishHostSettings();
+  net.offs.push(room.onPeers(({ peers }) => { net.peers = peers; publishHostSettings(); renderRoom(); }));
+  net.offs.push(room.on('start', m => onNetStart(m.data)));
+  net.offs.push(room.on('s', m => onNetState(m.data)));
+  net.offs.push(room.on('box', m => { const d = m.data; if (race && d && d.r === race.raceId) { const b = race.boxes[d.i | 0]; if (b) { b.cool = 2.5; b.mesh.visible = false; } } }));
+  net.offs.push(room.on('ban', m => { const d = m.data; if (race && d && d.r === race.raceId && typeof d.id === 'string') spawnBanana({ id: d.id, x: +d.x || 0, z: +d.z || 0 }); }));
+  net.offs.push(room.on('banx', m => { const d = m.data; if (race && d && d.r === race.raceId) removeBanana(d.id); }));
+  net.offs.push(room.on('ball', m => { const d = m.data; if (race && d && d.r === race.raceId && typeof d.id === 'string') spawnBall({ id: d.id, owner: d.owner, target: d.target, x: +d.x || 0, z: +d.z || 0, ti: (d.ti | 0) % N, lat: +d.lat || 0 }); }));
+  net.offs.push(room.on('ballx', m => { const d = m.data; if (race && d && d.r === race.raceId) removeBall(d.id); }));
+  renderRoom();
+}
+function leaveRoom() {
+  if (!net) return;
+  net.offs.forEach(f => { try { f(); } catch (e) { } });
+  try { net.room.leave(); } catch (e) { }
+  net = null;
+}
+function publishHostSettings() {
+  if (net && net.room.isHost()) net.room.presence({ track: sel.track, diff: sel.diff, cpus: !!sel.cpus });
+}
+function hostPeer() { return net && net.peers.find(p => p.isHost); }
+
+function renderRoom() {
+  if (!net || state !== 'room') return;
+  const isHost = net.room.isHost();
+  const host = hostPeer(), hp = (host && host.presence) || {};
+  const trackId = isHost ? sel.track : (TRACKS.some(t => t.id === hp.track) ? hp.track : bgTrack);
+  if (trackId !== bgTrack) showBackdrop(trackId);
+  const racing = net.peers.filter(p => !p.isMe && p.presence && p.presence.racing).length;
+  const others = net.peers.filter(p => !p.isMe).length;
+  const ul = $('roomPeers'); ul.innerHTML = '';
+  for (const p of net.peers.slice().sort((a, b) => b.isHost - a.isHost)) {
+    const pr = p.presence || {};
+    const li = document.createElement('li'); if (p.isMe) li.className = 'me';
+    const ch = CHARACTERS.find(c => c.id === pr.racer) || CHARACTERS[0];
+    if (pictures[ch.id]) { const im = new Image(); im.alt = ''; im.src = pictures[ch.id]; li.appendChild(im); }
+    const t = document.createElement('div');
+    t.textContent = (pr.name || 'Player') + (p.isMe ? ' (you)' : '');
+    const sm = document.createElement('small');
+    sm.textContent = [p.isHost ? 'Host' : '', pr.racing ? 'Racing now' : ch.name].filter(Boolean).join(' · ');
+    t.appendChild(sm); li.appendChild(t); ul.appendChild(li);
+  }
+  const trackName = (TRACKS.find(t => t.id === trackId) || TRACKS[0]).name;
+  let status;
+  if (isHost) status = others ? `You are the host. Pick a track and start the race when everyone is ready!` : `Waiting for others to join room "${net.code}"... You can also start now and race on your own.`;
+  else if (hp.racing) status = `${hp.name || 'The host'} is racing right now. You will be in the next race!`;
+  else status = `Track: ${trackName}. Waiting for ${hp.name || 'the host'} to start the race...`;
+  $('roomStatus').textContent = status;
+  document.querySelectorAll('#roomRacers .pick').forEach((b, i) => b.classList.toggle('on', CHARACTERS[i].id === sel.racer));
+  $('hostBox').hidden = !isHost;
+  if (isHost) {
+    const tr = $('roomTracks'); tr.innerHTML = '';
+    for (const t of TRACKS) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (t.id === sel.track ? ' on' : ''); b.textContent = t.name;
+      b.onclick = () => { sel.track = t.id; store.set('zoomkarts-track', t.id); publishHostSettings(); renderRoom(); };
+      tr.appendChild(b);
+    }
+    document.querySelectorAll('#roomCpus button').forEach(b => {
+      b.classList.toggle('on', (b.dataset.cpus === '1') === !!sel.cpus);
+      b.onclick = () => { sel.cpus = b.dataset.cpus === '1'; store.set('zoomkarts-cpus', sel.cpus); publishHostSettings(); renderRoom(); };
+    });
+    document.querySelectorAll('#roomDiffs button').forEach(b => {
+      b.classList.toggle('on', b.dataset.diff === sel.diff);
+      b.onclick = () => { sel.diff = b.dataset.diff; store.set('zoomkarts-diff', sel.diff); publishHostSettings(); renderRoom(); };
+    });
+    $('startNetBtn').textContent = racing ? `START RACE! (${racing} still racing)` : 'START RACE!';
+  }
+}
+
+function hostStartRace() {
+  if (!net || !net.room.isHost()) return;
+  const me = net.room.selfId();
+  const humans = net.peers.filter(p => p.presence && p.presence.name).slice(0, 8);
+  if (!humans.some(p => p.peer === me)) humans.unshift({ peer: me, presence: { name: cleanName($('pname').value), racer: sel.racer } });
+  const roster = humans.map(p => ({ id: p.peer, ch: CHARACTERS.some(c => c.id === p.presence.racer) ? p.presence.racer : 'ruby', name: cleanName(p.presence.name), owner: p.peer, cpu: false }));
+  if (sel.cpus) {
+    const used = new Set(roster.map(r => r.ch));
+    const pool = CHARACTERS.filter(c => !used.has(c.id)).concat(CHARACTERS.filter(c => used.has(c.id)));
+    for (let i = 0; roster.length < 6; i++) { const ch = pool[i % pool.length]; roster.push({ id: 'cpu' + i, ch: ch.id, name: ch.name, owner: me, cpu: true }); }
+  }
+  for (let i = roster.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [roster[i], roster[j]] = [roster[j], roster[i]]; }
+  const cfg = { track: sel.track, diff: sel.diff, roster, raceId: me + '-' + Date.now().toString(36) };
+  net.room.emit('start', cfg);
+  beginRace(cfg, me, me);
+}
+function onNetStart(cfg) {
+  if (!net || !cfg || !Array.isArray(cfg.roster) || typeof cfg.raceId !== 'string') return;
+  const me = net.room.selfId();
+  if (!cfg.roster.some(r => r && r.id === me)) return; // joined after this race was set up
+  const roster = cfg.roster.filter(r => r && typeof r.id === 'string').slice(0, 10).map(r => ({ id: r.id, ch: String(r.ch), name: cleanName(String(r.name || '')), owner: String(r.owner), cpu: !!r.cpu }));
+  beginRace({ track: String(cfg.track), diff: String(cfg.diff), roster, raceId: cfg.raceId }, me, me);
+}
+function backToRoom() {
+  if (!net) { showMenu(); return; }
+  Sound.engineOff();
+  net.room.presence({ racing: false });
+  hideAll(); $('hud').hidden = true; $('room').hidden = false;
+  state = 'room';
+  showBackdrop(bgTrack);
+  racerButtons($('roomRacers'), () => { renderRoom(); if (net) net.room.presence({ racer: sel.racer }); });
+  renderRoom();
+}
+$('joinBtn').addEventListener('click', joinRoom);
+$('leaveRoomBtn').addEventListener('click', showMenu);
+$('startNetBtn').addEventListener('click', hostStartRace);
+for (const id of ['pname', 'rcode']) $(id).addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') joinRoom(); });
+
 // ---------- Main loop ----------
 let last = performance.now(), menuAngle = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (state === 'menu' && world) {
-    const td = trackData(TRACKS.find(t => t.id === sel.track)), b = td.bounds;
+  if ((state === 'menu' || state === 'room') && world) {
+    const td = trackData(TRACKS.find(t => t.id === bgTrack) || TRACKS[0]), b = td.bounds;
     menuAngle += dt * 0.12;
     const r = Math.max(b.maxX - b.minX, b.maxZ - b.minZ) * 0.75;
     camera.position.set(b.cx + Math.cos(menuAngle) * r, r * 0.55, b.cz + Math.sin(menuAngle) * r);
     camera.lookAt(b.cx, 0, b.cz);
-  } else if (race && state !== 'paused' && state !== 'results') {
+  } else if (race && state !== 'paused' && (state !== 'results' || race.multi)) {
     updateRace(dt);
   }
   renderer.render(scene, camera);
@@ -1177,7 +1501,7 @@ renderMenu();
 showMenu();
 if (PARAMS.has('autostart')) startRace();
 requestAnimationFrame(frame);
-window.__zoomkarts = { get race() { return race; }, get state() { return state; } };
+window.__zoomkarts = { get race() { return race; }, get state() { return state; }, get net() { return net; } };
 </script>
 </body>
 </html>
