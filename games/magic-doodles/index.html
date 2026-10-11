@@ -72,7 +72,9 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 #hudTop > * { pointer-events: auto; }
 .bigChip { padding: 12px 16px; font: 800 16px var(--font-body); background: var(--accent); color: var(--accent-ink); border: 4px solid var(--line); border-radius: 12px; }
 #tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 90px; transition: opacity .6s; background: rgba(42,33,24,.85); border: 3px solid var(--line); border-radius: 10px; padding: 8px 14px; font-weight: 800; font-size: 15px; text-align: center; max-width: 90vw; pointer-events: none; }
-#strip { position: absolute; left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 8px; overflow-x: auto; padding: 0 12px; justify-content: safe center; }
+#stripToggle { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom)); padding: 8px 16px; background: rgba(42,33,24,.9); color: var(--ink); border: 3px solid var(--line); border-radius: 999px; font: 800 15px var(--font-body); white-space: nowrap; }
+#stripToggle.open { background: var(--accent); color: var(--accent-ink); }
+#strip { position: absolute; left: 0; right: 0; bottom: calc(max(10px, env(safe-area-inset-bottom)) + 52px); display: flex; gap: 8px; overflow-x: auto; padding: 0 12px; justify-content: safe center; }
 .thumb { position: relative; flex: 0 0 auto; width: 60px; height: 60px; background: rgba(255,255,255,.9); border: 3px solid var(--line); border-radius: 10px; padding: 3px; }
 .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
 .thumb.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent); }
@@ -235,7 +237,8 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
     <button class="sb" id="turnBuildBtn" type="button"><span class="ic">&#128260;</span>Turn</button>
     <button class="sb" id="removeBuildBtn" type="button"><span class="ic">&#128465;&#65039;</span>Remove</button>
   </div>
-  <div id="strip"></div>
+  <div id="strip" hidden></div>
+  <button id="stripToggle" type="button" aria-expanded="false"></button>
 </div>
 
 <div id="buildSheet" class="sheet" hidden>
@@ -2066,16 +2069,29 @@ function renderSel() {
   $('voiceBtn').innerHTML = rec ? `<span class="ic">⏹️</span>Stop ${Voice.left}` : '<span class="ic">🎤</span>Voice';
   $('voiceBtn').classList.toggle('on', !!rec);
 }
+// the row of doodle pictures stays tucked away until you want to pick one
+let stripOpen = false;
+function setStripOpen(open) {
+  stripOpen = open && doodles.length > 0;
+  $('strip').hidden = !stripOpen;
+  const t = $('stripToggle');
+  t.hidden = doodles.length === 0;
+  t.classList.toggle('open', stripOpen);
+  t.setAttribute('aria-expanded', String(stripOpen));
+  t.textContent = stripOpen ? '▼ Hide' : `🖼️ My doodles (${doodles.length})`;
+}
+$('stripToggle').addEventListener('click', () => { hideTip(); setStripOpen(!stripOpen); });
 function renderStrip() {
   const strip = $('strip'); strip.innerHTML = '';
   for (const d of doodles) {
     const b = document.createElement('div'); b.className = 'thumb' + (d === selected ? ' on' : ''); b.dataset.id = d.entry.id;
     b.setAttribute('role', 'button'); b.tabIndex = 0;
     const im = new Image(); im.alt = ''; im.src = d.entry.img; b.appendChild(im);
-    b.addEventListener('click', () => { const t = d.attachedTo || d; cam.focus = t; cam.focusT = 2.5; poke(d.attachedTo ? d.attachedTo : d); });
+    b.addEventListener('click', () => { const t = d.attachedTo || d; cam.focus = t; cam.focusT = 2.5; poke(d.attachedTo ? d.attachedTo : d); setStripOpen(false); });
     strip.appendChild(b);
   }
   $('toWorldBtn').hidden = loadDoodles().length === 0;
+  setStripOpen(stripOpen);
 }
 async function loadWorld(skipId) {
   if (worldLoaded) return;
@@ -2097,7 +2113,7 @@ async function showWorld(newEntry) {
       select(d); burst(d.pos); Sound.magic();
     }
   }
-  renderStrip(); renderSel(); updateWorldBtns();
+  stripOpen = false; renderStrip(); renderSel(); updateWorldBtns();
   last = performance.now();
 }
 function showDraw() {
