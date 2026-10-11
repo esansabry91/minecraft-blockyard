@@ -56,6 +56,21 @@ body.touch #hud { bottom: auto; top: 0; padding: calc(10px + env(safe-area-inset
 #count { position: fixed; left: 0; right: 0; top: 34%; text-align: center; font: 120px/1 var(--font-display); color: #ffcf3f; text-shadow: 6px 6px 0 #0c0906, 0 0 30px rgba(255, 120, 0, .8); pointer-events: none; opacity: 0; z-index: 7; }
 #count.show { animation: cpop .95s ease-out; }
 @keyframes cpop { 0% { opacity: 0; transform: scale(2.4); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.7); } }
+#partsRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.part { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 9px; font: 800 13px/1 var(--font-body); color: var(--ink); }
+.part i { width: 12px; height: 12px; border: 1px solid var(--line); display: block; }
+.rcp { background: var(--panel-2); border: 3px solid var(--line); border-radius: 6px; padding: 10px 12px; margin: 0 0 10px; }
+.rcp h3 { margin: 0 0 4px; font: 11px/1.4 var(--font-display); color: var(--accent); }
+.rcp p { margin: 0 0 8px; font-size: 13px; }
+.rcp .need { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.chip { font: 800 12px/1 var(--font-body); padding: 6px 8px; border-radius: 4px; background: #3a2a2a; color: #ffb4a8; border: 2px solid var(--line); }
+.chip.ok { background: #274028; color: #b8f0a8; }
+.rcp .ub { width: 100%; text-align: center; }
+.rcp .ub:disabled { opacity: 0.5; cursor: default; }
+#maps { display: flex; gap: 10px; margin: 0 0 14px; }
+.mapb { flex: 1; font: 800 15px/1.2 var(--font-body); padding: 12px 8px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 6px; cursor: pointer; }
+.mapb small { display: block; font-weight: 600; font-size: 12px; opacity: 0.75; margin-top: 4px; }
+.mapb.on { border-color: var(--accent); background: #54432f; }
 #banner { position: fixed; left: 0; right: 0; top: 30%; text-align: center; pointer-events: none; opacity: 0; transform: scale(0.8); transition: opacity 0.3s, transform 0.3s; z-index: 6; padding: 0 16px; }
 #banner.show { opacity: 1; transform: scale(1); }
 #banner h3 { margin: 0 0 8px; font: 26px/1.3 var(--font-display); color: var(--accent); text-shadow: 3px 3px 0 var(--line); text-wrap: balance; }
@@ -76,9 +91,19 @@ body.touch .ub.big { font-size: 14px; padding: 10px 14px; }
 body.touch .ub kbd { display: none; }
 body.touch #bMenu { display: block; }
 body.touch #bMore { display: none; }
-body.touch #drawer { display: none; flex-direction: column; align-items: flex-end; gap: 6px; padding: 8px; background: rgba(12, 9, 6, 0.9); border: 2px solid var(--line); border-radius: 6px; overflow-y: auto; }
-body.touch #utils.open #drawer { display: flex; }
-body.touch #more, body.touch #more[hidden] { display: flex !important; flex-direction: column; align-items: flex-end; gap: 6px; }
+body.touch #utils { z-index: 18; }
+#menuShade { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 15; }
+body.touch #menuShade.open { display: block; }
+#bMenuClose { display: none; }
+body.touch #drawer { display: none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92vw, 460px); max-height: 84vh; overflow-y: auto; padding: 12px; background: rgba(12, 9, 6, 0.97); border: 3px solid var(--line); border-radius: 10px; z-index: 20; grid-template-columns: 1fr 1fr; gap: 8px; }
+body.touch #utils.open #drawer { display: grid; }
+body.touch #drawer .ub { width: 100%; text-align: center; padding: 14px 6px; font-size: 15px; }
+body.touch #more, body.touch #more[hidden] { display: contents !important; }
+body.touch #bMenuClose { display: block; grid-column: 1 / -1; }
+body.touch #bWork { grid-column: 1 / -1; }
+@media (min-width: 600px) { body.touch #drawer { grid-template-columns: repeat(3, 1fr); width: min(94vw, 640px); } }
+@media (max-height: 560px) { body.touch #drawer .ub { padding: 10px 6px; font-size: 14px; } body.touch #drawer { gap: 6px; padding: 10px; } }
+
 .ub { font: 800 14px/1 var(--font-body); color: var(--ink); background: rgba(12, 9, 6, 0.72); border: 2px solid var(--line); border-radius: 4px; padding: 10px 13px; cursor: pointer; }
 .ub:hover, .ub:focus-visible { background: var(--panel-2); outline: 2px solid var(--accent); }
 .ub.on { background: var(--accent); color: var(--accent-ink); }
@@ -200,10 +225,13 @@ body.touch .keys.t { display: grid; }
 <div id="friends" hidden><h4 id="frHead">PLAYING TOGETHER</h4><ul id="frList"></ul></div>
 <div id="compass"><div id="arrow"><svg viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="16" fill="#3b2f22" stroke="#0c0906" stroke-width="2"/><polygon id="arrowHead" points="17,5 25,24 17,19 9,24" fill="#ffcf3f" stroke="#0c0906" stroke-width="1.5"/></svg></div><div id="cmsg"></div></div>
 
+<div id="menuShade"></div>
 <div id="utils">
   <button class="ub big" id="bBuild" type="button">Build helper <kbd>B</kbd></button>
+  <button class="ub" id="bWeap" type="button">Weapon: none</button>
   <button class="ub" id="bMenu" type="button" aria-expanded="false">&#9776; Menu</button>
   <div id="drawer">
+  <button class="ub big" id="bWork" type="button">Workshop <kbd>C</kbd></button>
   <button class="ub" id="bBlocks" type="button">More blocks <kbd>E</kbd></button>
   <button class="ub big" id="bBook" type="button">Adventure book <kbd>K</kbd></button>
   <button class="ub" id="bView" type="button">View: first person</button>
@@ -214,10 +242,12 @@ body.touch .keys.t { display: grid; }
     <button class="ub" id="bTime" type="button">Day / Night</button>
     <button class="ub" id="bHome" type="button">Go home</button>
     <button class="ub" id="bChar" type="button">Hero and friends</button>
+    <button class="ub" id="bMap" type="button">Map: Meadow Valley</button>
     <button class="ub" id="bFull" type="button">Full screen</button>
     <button class="ub" id="bSound" type="button">Sound: on</button>
     <button class="ub" id="bReset" type="button">New world</button>
   </div>
+  <button class="ub big" id="bMenuClose" type="button">Close menu</button>
   </div>
 </div>
 
@@ -231,6 +261,13 @@ body.touch .keys.t { display: grid; }
   <h2>PICK A BLOCK</h2>
   <p>It goes into the slot you have selected. Try the fireworks, bounce pad, ice, animal egg, flowers and star lamp.</p>
   <div class="grid6" id="blockGrid"></div>
+  <button class="close" type="button" data-close>Close</button>
+</div>
+<div class="sheet" id="pWork" hidden>
+  <h2>WORKSHOP</h2>
+  <p>Collect parts, then put them together to make a weapon. Break logs for wood, break stone for stone, pick up pink magic gems or find treasure for gems, and swim in water for water drops.</p>
+  <div id="partsRow"></div>
+  <div id="recipes"></div>
   <button class="close" type="button" data-close>Close</button>
 </div>
 <div class="sheet" id="pBook" hidden>
@@ -264,6 +301,11 @@ body.touch .keys.t { display: grid; }
   <div class="panel">
     <h1>Blockyard</h1>
     <p>Build anything. Dig anything. Find treasure, pick flowers and play with friends.</p>
+    <h2>CHOOSE A MAP</h2>
+    <div id="maps">
+      <button class="mapb" type="button" data-map="meadow">Meadow Valley<small>Forests, animals, building</small></button>
+      <button class="mapb" type="button" data-map="palace">Palace Kingdom<small>Castle, princess, royal garden</small></button>
+    </div>
     <h2>YOUR NAME AND ROOM</h2>
     <div class="fields">
       <label for="pname">Your name<input id="pname" type="text" maxlength="12" autocomplete="off" value="Player"></label>
@@ -282,6 +324,8 @@ body.touch .keys.t { display: grid; }
       <dt>B</dt><dd>Build helper: houses, towers, castles</dd>
       <dt>E</dt><dd>More blocks</dd>
       <dt>K</dt><dd>Adventure book</dd>
+      <dt>C</dt><dd>Workshop: make weapons</dd>
+      <dt>Q</dt><dd>Switch weapon</dd>
       <dt>V</dt><dd>See your hero from behind</dd>
     </dl>
     <dl class="keys t">
@@ -290,6 +334,7 @@ body.touch .keys.t { display: grid; }
       <dt>TAP</dt><dd>Tap the screen to break a block</dd>
       <dt>PLACE</dt><dd>Hold to put blocks down</dd>
       <dt>BUILD</dt><dd>Tap Build helper for a house or castle</dd>
+      <dt>WEAPON</dt><dd>Menu, then Workshop: put parts together to make a sword, axe or water gun</dd>
     </dl>
     <button id="play" type="button">PLAY</button>
     <p class="fine" id="installTip" hidden></p>
@@ -321,7 +366,9 @@ body.touch .keys.t { display: grid; }
 const W = 192, D = 192, H = 48, CS = 16, SEA = 11;
 const NCX = W / CS, NCZ = D / CS;
 const CYCLE = 240;
-const SAVE_KEY = 'blockyard-save-v2', CHAR_KEY = 'blockyard-char-v2', NAME_KEY = 'blockyard-name-v1', ROOM_KEY = 'blockyard-room-v1';
+let MAPID = 'meadow'; try { MAPID = localStorage.getItem('blockyard-map-v1') === 'palace' ? 'palace' : 'meadow'; } catch (e) { }
+const INV_KEY = 'blockyard-inv-v1';
+const SAVE_KEY = 'blockyard-save-v2' + (MAPID === 'palace' ? '-palace' : ''), CHAR_KEY = 'blockyard-char-v2', NAME_KEY = 'blockyard-name-v1', ROOM_KEY = 'blockyard-room-v1';
 const TPR = 8;
 const isTouch = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
 if (isTouch) document.body.classList.add('touch');
@@ -345,6 +392,7 @@ let HOTBAR = [GRASS, DIRT, STONE, PLANKS, BRICK, GLASS, RED, BLUE, YELLOW];
 /* ---------- shared mutable state (declared up front) ---------- */
 let sel = 0, paused = true, panelOpen = null, lockEver = false, hold = null, holdCD = 0, lastSpace = 0;
 let viewMode = 0, flying = false, inWater = false, onGround = false, standing = 0, trailOn = false;
+let weapon = null;
 let yaw = 0, pitch = 0, tod = 0.12, daylight = 1, swing = 0, walkPhase = 0, spawn = null;
 let myName = 'Player', roomCode = 'family';
 let net = null, booted = false;
@@ -464,7 +512,153 @@ function terrainH(x, z) {
   return Math.floor(4 + n * 26);
 }
 const isTreeAt = (x, z) => x >= 3 && z >= 3 && x < W - 3 && z < D - 3 && terrainH(x, z) > SEA + 1 && hash(x, z, 31) >= 0.988;
+
+/* ---------- Palace Kingdom map ---------- */
+const PC = { x: 96, z: 96, g: 14 };
+function palHeight(x, z) {
+  const dc = Math.max(Math.abs(x - PC.x), Math.abs(z - PC.z));
+  const n = 0.45 * vnoise(x / 60, z / 60, 16) + 0.3 * vnoise(x / 28, z / 28, 17) + 0.25 * vnoise(x / 11, z / 11, 18);
+  const hills = 10 + Math.floor(n * 18);
+  const t = Math.min(1, Math.max(0, (dc - 40) / 26)), sm = t * t * (3 - 2 * t);
+  return Math.floor(PC.g + (hills - PC.g) * sm);
+}
+function generatePalace() {
+  world.fill(0); natural.clear();
+  const cx = PC.x, cz = PC.z, g = PC.g;
+  const hmap = new Int16Array(W * D);
+  const B = (x, y, z, id) => { if (x >= 0 && x < W && z >= 0 && z < D && y >= 0 && y < H) world[idx(x, y, z)] = id; };
+  const box = (x1, x2, y1, y2, z1, z2, id) => { for (let y = y1; y <= y2; y++) for (let z = z1; z <= z2; z++) for (let x = x1; x <= x2; x++) B(x, y, z, id); };
+  const G = (x, z) => hmap[x + z * W];
+  for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+    const dc = Math.max(Math.abs(x - cx), Math.abs(z - cz));
+    let h = (dc >= 30 && dc <= 34) ? 8 : (dc <= 40 ? g : palHeight(x, z));
+    hmap[x + z * W] = h;
+    const beach = h <= SEA + 1;
+    for (let y = 0; y <= h; y++) {
+      let b = STONE;
+      if (y === h) b = beach ? SAND : (h >= 25 ? STONE : GRASS); else if (y > h - 4) b = beach ? SAND : DIRT;
+      world[idx(x, y, z)] = b;
+    }
+    for (let y = h + 1; y <= SEA; y++) world[idx(x, y, z)] = WATER;
+  }
+  // ----- outer wall -----
+  for (let z = cz - 25; z <= cz + 25; z++) for (let x = cx - 25; x <= cx + 25; x++) {
+    const dc = Math.max(Math.abs(x - cx), Math.abs(z - cz));
+    if (dc < 24) continue;
+    box(x, x, g + 1, g + 7, z, z, WHITE);
+    if ((x + z) % 2 === 0) B(x, g + 8, z, PINK);
+    if ((x + z) % 7 === 0) box(x, x, g + 3, g + 4, z, z, GLASS);
+  }
+  box(cx - 3, cx + 3, g + 1, g + 6, cz + 24, cz + 25, AIR);
+  box(cx - 3, cx + 3, g + 7, g + 7, cz + 24, cz + 25, YELLOW);
+  box(cx - 4, cx - 4, g + 1, g + 8, cz + 24, cz + 25, YELLOW); box(cx + 4, cx + 4, g + 1, g + 8, cz + 24, cz + 25, YELLOW);
+  // ----- towers -----
+  const tower = (tx, tz, r, y0, h, roofId, solid, doorDir) => {
+    for (let y = y0; y < y0 + h; y++) for (let dz = -r; dz <= r; dz++) for (let dx = -r; dx <= r; dx++) {
+      const edge = Math.abs(dx) === r || Math.abs(dz) === r;
+      let id = AIR;
+      if (edge || solid) id = WHITE;
+      if (edge && y === y0 + h - 4) id = YELLOW;
+      if (edge && !solid && y >= y0 + 5 && (y - y0) % 7 >= 5 && ((dx === 0 && Math.abs(dz) === r) || (dz === 0 && Math.abs(dx) === r))) id = GLASS;
+      B(tx + dx, y, tz + dz, id);
+    }
+    if (doorDir && !solid) { // door on the face toward (cx,cz)
+      const sx = Math.sign(cx - tx), sz = Math.sign(cz - tz);
+      if (Math.abs(cx - tx) >= Math.abs(cz - tz)) box(tx + sx * r, tx + sx * r, y0, y0 + 2, tz - 1, tz + 1, AIR); else box(tx - 1, tx + 1, y0, y0 + 2, tz + sz * r, tz + sz * r, AIR);
+    }
+    for (let k = 0; k <= r + 1; k++) { const rad = r + 1 - k, y = y0 + h + k; box(tx - rad, tx + rad, y, y, tz - rad, tz + rad, k === r + 1 ? YELLOW : roofId); }
+    if (!solid) B(tx, y0 + h - 2, tz, STAR);
+  };
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    tower(cx + sx * 24, cz + sz * 24, 4, g + 1, 24, PINK, false, true);
+    const tx = cx + sx * 24, tz = cz + sz * 24;
+    box(tx, tx, g + 25 + 5, g + 25 + 7, tz, tz, WOOD); box(tx + 1, tx + 2, g + 25 + 7, g + 25 + 7, tz, tz, RED);
+  }
+  // ----- the palace (keep) -----
+  const kx1 = cx - 12, kx2 = cx + 12, kz1 = cz - 14, kz2 = cz + 2;
+  box(kx1, kx2, g + 1, g + 15, kz1, kz2, WHITE);
+  box(kx1 + 1, kx2 - 1, g + 1, g + 14, kz1 + 1, kz2 - 1, AIR);
+  box(kx1, kx2, g + 8, g + 8, kz1, kz2, YELLOW); box(kx1, kx2, g + 15, g + 15, kz1, kz2, YELLOW);
+  box(kx1 + 1, kx2 - 1, g + 15, g + 15, kz1 + 1, kz2 - 1, WHITE);
+  for (let x = kx1; x <= kx2; x++) for (let z = kz1; z <= kz2; z++) if ((x === kx1 || x === kx2 || z === kz1 || z === kz2) && (x + z) % 2 === 0) B(x, g + 16, z, PINK);
+  // floor, carpet
+  for (let x = kx1 + 1; x <= kx2 - 1; x++) for (let z = kz1 + 1; z <= kz2 - 1; z++) B(x, g, z, (x + z) % 2 ? WHITE : PINK);
+  box(cx - 1, cx + 1, g, g, kz1 + 1, kz2, RED);
+  // door + windows
+  box(cx - 2, cx + 2, g + 1, g + 6, kz2, kz2, AIR); box(cx - 2, cx + 2, g + 7, g + 7, kz2, kz2, YELLOW);
+  for (const wx of [-10, -8, -6, 6, 8, 10]) box(cx + wx, cx + wx, g + 3, g + 6, kz2, kz2, GLASS);
+  for (const wz of [-3, -7, -11]) { box(kx1, kx1, g + 3, g + 6, cz + wz, cz + wz, GLASS); box(kx2, kx2, g + 3, g + 6, cz + wz, cz + wz, GLASS); }
+  for (const wx of [-8, -4, 4, 8]) box(cx + wx, cx + wx, g + 10, g + 12, kz2, kz2, GLASS);
+  // pillars, lamps, thrones
+  for (const px of [-6, 6]) for (const pz of [-2, -6, -10]) { box(cx + px, cx + px, g + 1, g + 13, cz + pz, cz + pz, PINK); B(cx + px, g + 14, cz + pz, YELLOW); }
+  for (const [lx, lz] of [[-6, -4], [6, -4], [-6, -8], [6, -8], [0, -6], [0, 0]]) B(cx + lx, g + 12, cz + lz, STAR);
+  box(cx - 5, cx + 5, g + 1, g + 1, cz - 13, cz - 10, PURPLE);
+  box(cx - 1, cx + 1, g + 2, g + 2, cz - 12, cz - 12, YELLOW); box(cx - 1, cx + 1, g + 3, g + 6, cz - 13, cz - 13, YELLOW); box(cx - 1, cx + 1, g + 7, g + 7, cz - 13, cz - 13, PINK);
+  for (const tx of [-4, 4]) { box(cx + tx, cx + tx, g + 2, g + 2, cz - 12, cz - 12, PINK); box(cx + tx, cx + tx, g + 3, g + 5, cz - 13, cz - 13, PINK); }
+  // keep corner turrets and the great tower
+  for (const [tx, tz] of [[kx1, kz2], [kx2, kz2], [kx1, kz1], [kx2, kz1]]) tower(tx, tz, 2, g + 1, 19, PINK, true, false);
+  tower(cx, cz - 8, 4, g + 16, 12, PURPLE, false, false);
+  box(cx - 1, cx + 1, g + 16, g + 17, cz - 8, cz - 8, AIR);
+  // ----- paved paths, fountain, trees, flowers -----
+  const top = (x, z) => G(x, z);
+  const pave = (x, z, id) => { if (x >= 0 && x < W && z >= 0 && z < D) { B(x, top(x, z), z, id); } };
+  for (let z = cz + 3; z <= cz + 24; z++) for (let x = cx - 2; x <= cx + 2; x++) pave(x, z, Math.abs(x - cx) <= 0 ? RED : ((x + z) % 2 ? WHITE : PINK));
+  for (let z = cz + 26; z <= cz + 92; z++) for (let x = cx - 2; x <= cx + 2; x++) { if (z >= cz + 30 && z <= cz + 34) continue; pave(x, z, (x + z) % 2 ? WHITE : PINK); }
+  for (let z = cz + 25; z <= cz + 35; z++) for (let x = cx - 3; x <= cx + 3; x++) if (z >= cz + 25 && z <= cz + 29 || z >= cz + 35) pave(x, z, (x + z) % 2 ? WHITE : PINK);
+  // bridge over the moat
+  for (let z = cz + 30; z <= cz + 34; z++) for (let x = cx - 3; x <= cx + 3; x++) { B(x, g, z, PLANKS); if (Math.abs(x - cx) === 3) B(x, g + 1, z, WOOD); }
+  // fountain
+  const fx = cx, fz = cz + 15;
+  for (let dz = -5; dz <= 5; dz++) for (let dx = -5; dx <= 5; dx++) {
+    const d = Math.hypot(dx, dz); if (d > 5.4) continue;
+    if (d > 4.2) { B(fx + dx, g, fz + dz, (dx + dz) % 2 ? WHITE : PINK); B(fx + dx, g + 1, fz + dz, WHITE); }
+    else { B(fx + dx, g, fz + dz, WHITE); B(fx + dx, g + 1, fz + dz, WATER); }
+  }
+  box(fx, fx, g + 1, g + 5, fz, fz, WHITE); B(fx, g + 6, fz, YELLOW); B(fx, g + 7, fz, WATER);
+  // cherry trees in the courtyard and outside
+  const cherry = (x, z, ty, pink) => {
+    for (let y = 1; y <= 4; y++) B(x, ty + y, z, WOOD);
+    for (let dy = 3; dy <= 6; dy++) { const rad = dy >= 6 ? 1 : 2; for (let dz = -rad; dz <= rad; dz++) for (let dx = -rad; dx <= rad; dx++) { if (rad === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2) continue; if (world[idx(x + dx, ty + dy, z + dz)] === AIR) B(x + dx, ty + dy, z + dz, pink ? PINK : LEAVES); } }
+  };
+  for (const [dx, dz] of [[-16, 8], [16, 8], [-16, 20], [16, 20], [-16, -2], [16, -2]]) cherry(cx + dx, cz + dz, g, true);
+  // ----- village cottages -----
+  const houses = [];
+  const house = (hx, hz, faceX) => {
+    const y0 = G(hx, hz);
+    for (let z = hz - 5; z <= hz + 5; z++) for (let x = hx - 5; x <= hx + 5; x++) { for (let y = 0; y <= y0; y++) if (world[idx(x, y, z)] === AIR || y === y0) world[idx(x, y, z)] = y === y0 ? GRASS : DIRT; box(x, x, y0 + 1, y0 + 9, z, z, AIR); hmap[x + z * W] = y0; }
+    for (let z = hz - 3; z <= hz + 3; z++) for (let x = hx - 3; x <= hx + 3; x++) {
+      const edge = Math.abs(x - hx) === 3 || Math.abs(z - hz) === 3;
+      B(x, y0, z, PLANKS);
+      for (let y = y0 + 1; y <= y0 + 4; y++) B(x, y, z, edge ? ((Math.abs(x - hx) === 3 && Math.abs(z - hz) === 3) ? WOOD : PLANKS) : AIR);
+    }
+    box(hx + faceX * 3, hx + faceX * 3, y0 + 1, y0 + 2, hz, hz, AIR);
+    box(hx - 3, hx - 3, y0 + 2, y0 + 3, hz - 1, hz - 1, GLASS); box(hx + 3, hx + 3, y0 + 2, y0 + 3, hz + 1, hz + 1, GLASS);
+    box(hx - 1, hx + 1, y0 + 2, y0 + 3, hz - 3, hz - 3, GLASS);
+    for (let k = 0; k < 4; k++) { const rad = 4 - k; box(hx - rad, hx + rad, y0 + 5 + k, y0 + 5 + k, hz - rad, hz + rad, k === 3 ? YELLOW : (k % 2 ? ORANGE : RED)); }
+    B(hx, y0 + 1, hz + 1, STAR);
+    houses.push({ x: hx, z: hz });
+  };
+  for (const [dz, i] of [[46, 0], [60, 1], [74, 2]]) { house(cx - 12, cz + dz, 1); house(cx + 12, cz + dz, -1); }
+  // ----- trees, flowers, gems -----
+  for (let z = 4; z < D - 4; z++) for (let x = 4; x < W - 4; x++) {
+    const dc = Math.max(Math.abs(x - cx), Math.abs(z - cz));
+    if (dc <= 36) continue;
+    const y = G(x, z); if (y <= SEA + 1 || world[idx(x, y, z)] !== GRASS || world[idx(x, y + 1, z)] !== AIR) continue;
+    if (Math.abs(x - cx) <= 4 && z > cz) continue;
+    if (houses.some(h => Math.abs(h.x - x) <= 6 && Math.abs(h.z - z) <= 6)) continue;
+    if (hash(x, z, 61) < 0.011) cherry(x, z, y, hash(x, z, 62) < 0.4);
+  }
+  for (let z = 2; z < D - 2; z++) for (let x = 2; x < W - 2; x++) {
+    const y = G(x, z); if (y <= SEA + 1 || world[idx(x, y, z)] !== GRASS || world[idx(x, y + 1, z)] !== AIR) continue;
+    const dc = Math.max(Math.abs(x - cx), Math.abs(z - cz)), r = hash(x, z, 41), boost = dc <= 23 ? 4 : 1;
+    let id = 0;
+    if (r < 0.022 * boost) id = [FLOWER_R, FLOWER_Y, FLOWER_B][Math.floor(hash(x, z, 42) * 3) % 3];
+    else if (r > 0.9 && r < 0.9 + 0.0065) id = MUSHROOM; else if (r > 0.95 && r < 0.95 + 0.0032) id = GEM;
+    if (id) { const i = idx(x, y + 1, z); world[i] = id; natural.add(i); }
+  }
+}
 function generate() {
+  if (MAPID === 'palace') { generatePalace(); return; }
   world.fill(0); natural.clear();
   for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
     const h = terrainH(x, z), beach = h <= SEA + 1;
@@ -738,6 +932,7 @@ function collides(px, py, pz) {
   return false;
 }
 function findSpawn() {
+  if (MAPID === 'palace') { const x = PC.x, z = PC.z + 44, y = surfaceY(x, z); return new THREE.Vector3(x + 0.5, y + 0.02, z + 0.5); }
   for (let r = 0; r < 40; r++) for (let a = 0; a < 12; a++) {
     const x = Math.floor(W / 2 + Math.cos(a) * r), z = Math.floor(D / 2 + Math.sin(a) * r);
     if (x < 2 || z < 2 || x >= W - 2 || z >= D - 2) continue;
@@ -826,7 +1021,8 @@ function buildHand(ch) {
 }
 function setHeld() {
   if (!armPivot) return;
-  if (heldMesh) { armPivot.remove(heldMesh); heldMesh.geometry.dispose(); }
+  if (heldMesh) { armPivot.remove(heldMesh); if (heldMesh.geometry) heldMesh.geometry.dispose(); else disposeTree(heldMesh); heldMesh = null; }
+  if (weapon) { heldMesh = makeWeaponMesh(weapon); armPivot.add(heldMesh); return; }
   heldMesh = new THREE.Mesh(blockGeometry(HOTBAR[sel], 0.2), matHeld);
   heldMesh.position.set(0, 0.17, -0.42); heldMesh.rotation.set(0.1, 0.6, 0); heldMesh.renderOrder = 999;
   armPivot.add(heldMesh);
@@ -1158,8 +1354,8 @@ function zombiePoof(z) {
   const p = z.g.position; confetti(p.x, p.y + (isBig(z) ? 2.5 : 1), p.z, isBig(z) ? 90 : 36, isBig(z) ? 6 : 3.5); beep(380, 0.18, 'triangle', 0.08);
   scene.remove(z.g); const i = zombies.indexOf(z); if (i >= 0) zombies.splice(i, 1);
 }
-function zombieKnock(z, kx, kz) {
-  z.hp--; z.hurt = 0.25; z.chase = true;
+function zombieKnock(z, kx, kz, dmg) {
+  z.hp -= (dmg || 1); z.hurt = 0.25; z.chase = true;
   const kd = Math.hypot(kx, kz) || 1; z.kx = kx / kd * (isBig(z) ? 2.5 : 7); z.kz = kz / kd * (isBig(z) ? 2.5 : 7); z.kt = isBig(z) ? 0.15 : 0.22;
   if (z.hp <= 0 && !z.ko) z.ko = 0.7;
 }
@@ -1167,19 +1363,19 @@ function zombieHit() {
   if (!zombies.length) return false;
   const ex = pos.x, ey = pos.y + 1.6, ez = pos.z, cp = Math.cos(pitch);
   const dx = -Math.sin(yaw) * cp, dy = Math.sin(pitch), dz = -Math.cos(yaw) * cp;
-  let best = null, bd = 1e9;
+  let best = null, bd = 1e9; const ws = wstats();
   for (const z of zombies) {
     if (z.ko) continue;
     const big = isBig(z), bs = z.bs || 1;
     const gx = z.g.position.x - ex, gy = z.g.position.y + (big ? 2.4 * bs : 1.0) - ey, gz = z.g.position.z - ez, d = Math.hypot(gx, gy, gz);
-    if (d > (big ? 7.5 * bs : 4.6) || d < 0.01) continue;
-    if ((gx * dx + gy * dy + gz * dz) / d > (big ? 0.68 : 0.82) && d < bd) { bd = d; best = z; }
+    if (d > (big ? 7.5 * bs : 4.6) * ws.rng || d < 0.01) continue;
+    if ((gx * dx + gy * dy + gz * dz) / d > (big ? 0.68 : 0.82) + ws.cos && d < bd) { bd = d; best = z; }
   }
   if (!best) return false;
   const kx = best.g.position.x - ex, kz = best.g.position.z - ez;
   confetti(best.g.position.x, best.g.position.y + 1.2, best.g.position.z, 10, 2.2); beep(220, 0.1, 'square', 0.09);
-  if (zIsAuth()) zombieKnock(best, kx, kz);
-  else { best.hp--; best.hurt = 0.25; if (best.hp <= 0 && !best.ko) best.ko = 0.7; try { net.rm.emit('zh', { id: best.id, kx: +kx.toFixed(2), kz: +kz.toFixed(2) }).catch(() => { }); } catch (e) { } }
+  if (zIsAuth()) zombieKnock(best, kx, kz, ws.dmg);
+  else { best.hp -= ws.dmg; best.hurt = 0.25; if (best.hp <= 0 && !best.ko) best.ko = 0.7; try { net.rm.emit('zh', { id: best.id, kx: +kx.toFixed(2), kz: +kz.toFixed(2), dmg: ws.dmg }).catch(() => { }); } catch (e) { } }
   if (best.hp <= 0) {
     if (best.kind === 'dino') { const left = zombies.filter(q => q.kind === 'dino' && !q.ko && q !== best).length; banner(left ? 'Dino beaten!' : 'You beat ALL the dinos!', left ? left + ' more to go' : 'Wow, amazing!'); chime(); const p = best.g.position; for (let i = 0; i < 4; i++) setTimeout(() => launchRocket(p.x + (Math.random() - 0.5) * 8, p.y + 2, p.z + (Math.random() - 0.5) * 8), i * 260); }
     else if (best.kind === 'mon') {
@@ -1189,7 +1385,7 @@ function zombieHit() {
     }
     else { zKO++; toast('Knocked out! Zombies beaten: ' + zKO); chime(); }
   }
-  else if (best.kind === 'dino' && best.hp === 4) toast('Keep going! 4 more hits');
+  else if (best.kind === 'dino' && best.hp > 0 && best.hp <= 4 && !best.warn) { best.warn = 1; toast('Keep going! ' + best.hp + ' more'); } else if (false) toast('Keep going! 4 more hits');
   return true;
 }
 function zombieState() {
@@ -1330,6 +1526,16 @@ function refreshHud() {
 const chests = [];
 const COMPASS_ARROW = document.getElementById('arrow'), CMSG = document.getElementById('cmsg');
 function chestPos(r, k) {
+  if (MAPID === 'palace') {
+    for (let t = 0; t < 80; t++) {
+      const x = 8 + Math.floor(hash(k, r * 13 + t, 51) * (W - 16)), z = 8 + Math.floor(hash(k + 9, r * 13 + t, 52) * (D - 16));
+      const y = surfaceY(x, z); if (y <= SEA + 1 || get(x, y - 1, z) !== GRASS) continue;
+      let near = false; for (let dz = -3; dz <= 3 && !near; dz++) for (let dx = -3; dx <= 3; dx++) if (get(x + dx, y, z + dz) === WOOD || get(x + dx, y, z + dz) === PLANKS) { near = true; break; }
+      if (near) continue;
+      return { x: x + 0.5, y, z: z + 0.5 };
+    }
+    return { x: PC.x + 0.5, y: PC.g + 1, z: PC.z + 18.5 };
+  }
   for (let t = 0; t < 60; t++) {
     const x = 8 + Math.floor(hash(k, r * 13 + t, 51) * (W - 16)), z = 8 + Math.floor(hash(k + 9, r * 13 + t, 52) * (D - 16));
     const h = terrainH(x, z); if (h <= SEA + 1) continue;
@@ -1378,7 +1584,7 @@ function foundChest(k, mine, who) {
   if (c) { confetti(c.x, c.y + 0.6, c.z, 90, 6); scene.remove(c.g); chests.splice(chests.indexOf(c), 1); }
   chime();
   if (mine) {
-    stats.treasure++; stats.gems++;
+    stats.treasure++; stats.gems++; inv.gem++; saveInv();
     banner('Treasure!', hunt.found.size + ' of 8 found');
     if (net) net.rm.emit('f', { r: hunt.r, k, n: myName }).catch(() => { });
   } else toast((who || 'A friend') + ' found a treasure!');
@@ -1416,6 +1622,7 @@ for (let i = 0; i < 9; i++) {
 function select(i) {
   sel = (i + HOTBAR.length) % HOTBAR.length;
   [...hotbarEl.children].forEach((c, k) => c.classList.toggle('sel', k === sel));
+  if (weapon) { weapon = null; weaponLabel(); }
   flash(NAMES[HOTBAR[sel]]); setHeld();
 }
 const blockGrid = document.getElementById('blockGrid');
@@ -1423,12 +1630,13 @@ PALETTE.forEach(id => {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.title = NAMES[id]; b.setAttribute('aria-label', NAMES[id]);
   const cv = document.createElement('canvas'); cv.width = cv.height = 16; drawTile(cv.getContext('2d'), BT[id][2], 16);
   b.appendChild(cv);
-  b.addEventListener('click', () => { HOTBAR[sel] = id; refreshSlot(sel); setHeld(); flash(NAMES[id]); saveSoon(); closePanels(); });
+  b.addEventListener('click', () => { HOTBAR[sel] = id; refreshSlot(sel); if (weapon) { weapon = null; weaponLabel(); } setHeld(); flash(NAMES[id]); saveSoon(); closePanels(); });
   blockGrid.appendChild(b);
 });
 
 /* ---------- collecting, breaking and placing ---------- */
 function collect(id) {
+  if (id === GEM) setTimeout(() => addPart('gem'), 60);
   stats.col[id] = (stats.col[id] || 0) + 1;
   const n = stats.col[id];
   chime();
@@ -1436,13 +1644,88 @@ function collect(id) {
   if (n === 3) { banner('New star!', 'You collected 3 ' + NAMES[id].toLowerCase() + 's'); }
   saveSoon(); refreshHud();
 }
+
+/* ---------- parts, workshop and weapons ---------- */
+const inv = { wood: 0, stone: 0, gem: 0, drop: 0 }, owned = { sword: false, axe: false, gun: false };
+try { const j = JSON.parse(localStorage.getItem(INV_KEY) || 'null'); if (j) { for (const k in inv) inv[k] = Math.max(0, (j.inv && +j.inv[k]) || 0); for (const k in owned) owned[k] = !!(j.own && j.own[k]); } } catch (e) { }
+function saveInv() { try { localStorage.setItem(INV_KEY, JSON.stringify({ inv, own: owned })); } catch (e) { } }
+const PART_NAMES = { wood: 'Wood', stone: 'Stone', gem: 'Gem', drop: 'Water drop' };
+const PART_COL = { wood: '#9a6a2e', stone: '#8b8b8b', gem: '#ff6fd0', drop: '#4aa8ff' };
+const RECIPES = [
+  { id: 'sword', name: 'Magic Sword', need: { wood: 1, stone: 2, gem: 1 }, desc: 'Knocks monsters out in fewer hits.' },
+  { id: 'axe', name: 'Mighty Axe', need: { wood: 2, stone: 2 }, desc: 'The strongest hit. Also gives double wood from logs.' },
+  { id: 'gun', name: 'Water Gun', need: { wood: 1, gem: 1, drop: 2 }, desc: 'Splash monsters from far away.' }
+];
+const WNAME = { sword: 'Magic Sword', axe: 'Mighty Axe', gun: 'Water Gun' };
+function addPart(k, n) { n = n || 1; inv[k] += n; saveInv(); toast('+' + n + ' ' + PART_NAMES[k] + '   (you have ' + inv[k] + ')'); if (sheets.work && !sheets.work.hidden) renderWork(); }
+function wmesh(w, h, d, color, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color, depthTest: false })); m.position.set(x, y, z); m.renderOrder = 999; return m; }
+function makeWeaponMesh(w) {
+  const g = new THREE.Group();
+  if (w === 'sword') {
+    g.add(wmesh(0.05, 0.5, 0.014, 0xdfe8f2, 0, 0.36, 0), wmesh(0.03, 0.46, 0.016, 0xffffff, 0, 0.36, 0.004), wmesh(0.22, 0.045, 0.05, 0xffcf3f, 0, 0.1, 0), wmesh(0.05, 0.16, 0.05, 0x9a6a2e, 0, 0, 0), wmesh(0.07, 0.07, 0.07, 0xff6fd0, 0, -0.1, 0));
+    g.position.set(0.02, 0.04, -0.42); g.rotation.set(-0.5, 0.25, 0.15);
+  } else if (w === 'axe') {
+    g.add(wmesh(0.05, 0.62, 0.05, 0x9a6a2e, 0, 0.2, 0), wmesh(0.26, 0.2, 0.05, 0xb9c2cc, 0.13, 0.46, 0), wmesh(0.05, 0.16, 0.06, 0xe8eef4, 0.26, 0.46, 0));
+    g.position.set(0.02, 0.0, -0.42); g.rotation.set(-0.45, 0.3, 0.1);
+  } else {
+    g.add(wmesh(0.13, 0.15, 0.4, 0x3a86ff, 0, 0, 0), wmesh(0.06, 0.06, 0.24, 0xb8e2ff, 0, 0.02, -0.3), wmesh(0.12, 0.13, 0.17, 0x4ad0ff, 0, 0.14, 0.04), wmesh(0.07, 0.17, 0.07, 0xff8a1e, 0, -0.14, 0.1));
+    g.position.set(0.0, 0.1, -0.5); g.rotation.set(0.0, 0.1, 0);
+  }
+  return g;
+}
+function weaponLabel() { const b = document.getElementById('bWeap'); if (b) { b.textContent = 'Weapon: ' + (weapon ? WNAME[weapon] : 'none'); b.classList.toggle('on', !!weapon); } }
+function setWeapon(w) { weapon = w; setHeld(); weaponLabel(); if (w) flash(WNAME[w]); }
+function cycleWeapon() {
+  const list = [null].concat(Object.keys(owned).filter(k => owned[k]));
+  if (list.length === 1) { toast('Make a weapon first: Menu, then Workshop'); openPanel('work'); return; }
+  setWeapon(list[(list.indexOf(weapon) + 1) % list.length]);
+}
+function canMake(r) { for (const k in r.need) if (inv[k] < r.need[k]) return false; return true; }
+function makeWeapon(r) {
+  if (!canMake(r)) return;
+  for (const k in r.need) inv[k] -= r.need[k];
+  owned[r.id] = true; saveInv(); setWeapon(r.id); renderWork();
+  chime(); confetti(pos.x, pos.y + 1.5, pos.z, 40, 3);
+  banner('You made the ' + r.name + '!', 'It is in your hand');
+  closePanels();
+}
+function renderWork() {
+  const row = document.getElementById('partsRow'), box = document.getElementById('recipes'); if (!row || !box) return;
+  row.textContent = ''; box.textContent = '';
+  for (const k in inv) { const c = document.createElement('div'); c.className = 'part'; const i = document.createElement('i'); i.style.background = PART_COL[k]; const t = document.createElement('span'); t.textContent = PART_NAMES[k] + ': ' + inv[k]; c.append(i, t); row.appendChild(c); }
+  for (const r of RECIPES) {
+    const card = document.createElement('div'); card.className = 'rcp';
+    const h = document.createElement('h3'); h.textContent = r.name;
+    const p = document.createElement('p'); p.textContent = r.desc;
+    const need = document.createElement('div'); need.className = 'need';
+    for (const k in r.need) { const c = document.createElement('span'); c.className = 'chip' + (inv[k] >= r.need[k] ? ' ok' : ''); c.textContent = r.need[k] + ' ' + PART_NAMES[k] + ' (' + Math.min(inv[k], 99) + ')'; need.appendChild(c); }
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ub big';
+    if (owned[r.id]) { b.textContent = weapon === r.id ? 'Holding it' : 'Hold it'; b.addEventListener('click', () => { setWeapon(r.id); closePanels(); }); }
+    else { b.textContent = canMake(r) ? 'Put it together!' : 'Need more parts'; b.disabled = !canMake(r); b.addEventListener('click', () => makeWeapon(r)); }
+    card.append(h, p, need, b); box.appendChild(card);
+  }
+}
+let dropT = 0;
+function updateDrops(dt) {
+  if (paused) return;
+  const inW = get(Math.floor(pos.x), Math.floor(pos.y + 0.6), Math.floor(pos.z)) === WATER;
+  if (inW) { dropT += dt; if (dropT >= 1.6) { dropT = 0; if (inv.drop < 30) addPart('drop'); } } else dropT = 0;
+}
+function waterShot() {
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion), c = new THREE.Color(0x4aa8ff);
+  for (let i = 0; i < 22; i++) { const t = 0.6 + i * 0.35; spark(eye.x + dir.x * t, eye.y + dir.y * t - 0.15, eye.z + dir.z * t, dir.x * 2 + (Math.random() - 0.5), dir.y * 2 + Math.random() * 0.5, dir.z * 2 + (Math.random() - 0.5), c, 0.5 + Math.random() * 0.3); }
+  beep(700 + Math.random() * 200, 0.06, 'sine', 0.05);
+}
+const wstats = () => weapon === 'sword' ? { dmg: 2, rng: 1.25, cos: 0 } : weapon === 'axe' ? { dmg: 3, rng: 1.1, cos: 0 } : weapon === 'gun' ? { dmg: 1, rng: 2.8, cos: 0.1 } : { dmg: 1, rng: 1, cos: 0 };
 function doBreak() {
   swing = 1;
+  if (weapon === 'gun') { waterShot(); zombieHit(); return; }
   if (zombieHit()) return;
   const h = raycast(6.5); if (!h) return;
   const i = idx(h.x, h.y, h.z), id = get(h.x, h.y, h.z);
   if (isDecor(id) && natural.has(i)) { natural.delete(i); collect(id); }
   setBlock(h.x, h.y, h.z, AIR, true); burst(h.x, h.y, h.z, id); beep(170, 0.12, 'square', 0.07);
+  if (id === WOOD) addPart('wood', weapon === 'axe' ? 2 : 1); else if (id === STONE) addPart('stone');
 }
 function hatch(x, y, z, kind, mine) {
   addAnimal(kind, x, y, z, mine);
@@ -1897,10 +2180,11 @@ async function connectNet() {
     if (net && net.code === code) return;
     if (net) { net.offs.forEach(f => { try { f(); } catch (e) { } }); try { if (net.rm.leave && net.rm !== net.lobby) net.rm.leave(); } catch (e) { } for (const r of remotes.values()) if (r.root) disposeRemote(r); remotes.clear(); net = null; }
     let rm = room;
-    if (room) { try { rm = await room.join(code); } catch (e) { rm = room; } }
+    const netKey = code + (MAPID === 'palace' ? '-castle' : '');
+    if (room) { try { rm = await room.join(netKey); } catch (e) { rm = room; } }
     else {
       toast('Connecting to room ' + code + '...');
-      try { rm = await makePeerRoom(code); toast('Connected! Room ' + code); }
+      try { rm = await makePeerRoom(netKey); toast('Connected! Room ' + code); }
       catch (e) { toast('Could not connect. Playing alone for now.'); return; }
     }
     const offs = [];
@@ -1917,7 +2201,7 @@ async function connectNet() {
     }));
     offs.push(rm.on('z', m => { if (m.sameTab || zIsAuth()) return; try { if (m.data && Array.isArray(m.data.a)) zombieRecv(m.data.a); } catch (e) { } }));
     offs.push(rm.on('zc', m => { if (m.sameTab || zIsAuth()) return; try { countdownLocal(5); } catch (e) { } }));
-    offs.push(rm.on('zh', m => { if (m.sameTab || !zIsAuth()) return; try { const d = m.data || {}, z = zombies.find(q => q.id === d.id); if (z && !z.ko && Number.isFinite(d.kx) && Number.isFinite(d.kz)) zombieKnock(z, d.kx, d.kz); } catch (e) { } }));
+    offs.push(rm.on('zh', m => { if (m.sameTab || !zIsAuth()) return; try { const d = m.data || {}, z = zombies.find(q => q.id === d.id); if (z && !z.ko && Number.isFinite(d.kx) && Number.isFinite(d.kz)) zombieKnock(z, d.kx, d.kz, Math.min(3, Math.max(1, d.dmg | 0))); } catch (e) { } }));
     offs.push(rm.on('f', m => {
       if (m.sameTab || !m.data) return;
       const d = m.data; if (!Number.isInteger(d.k) || d.k < 0 || d.k > 7 || !Number.isFinite(d.r)) return;
@@ -1936,12 +2220,13 @@ async function connectNet() {
 }
 
 /* ---------- panels ---------- */
-const sheets = { build: document.getElementById('pBuild'), blocks: document.getElementById('pBlocks'), book: document.getElementById('pBook') };
+const sheets = { build: document.getElementById('pBuild'), blocks: document.getElementById('pBlocks'), book: document.getElementById('pBook'), work: document.getElementById('pWork') };
 function openPanel(name) {
   if (paused) return;
   closePanels(true);
   panelOpen = name; sheets[name].hidden = false;
   if (name === 'book') renderBook();
+  if (name === 'work') renderWork();
   try { document.exitPointerLock(); } catch (e) { }
 }
 function closePanels(quiet) {
@@ -2094,14 +2379,29 @@ holdBtn('tPlace', () => { if (paused) return; doPlace(); hold = 'place'; holdCD 
 function toggleSound() { soundOn = !soundOn; document.getElementById('bSound').textContent = 'Sound: ' + (soundOn ? 'on' : 'off'); }
 document.getElementById('utils').addEventListener('pointerdown', e => e.stopPropagation());
 const click = (id, fn) => document.getElementById(id).addEventListener('click', () => { fn(); if (!panelOpen) canvas.focus(); });
+click('bWeap', cycleWeapon);
+click('bWork', () => { panelOpen === 'work' ? closePanels() : openPanel('work'); });
+click('bMenuClose', () => { document.getElementById('utils').classList.remove('open'); document.getElementById('menuShade').classList.remove('open'); });
+window.addEventListener('keydown', e => { if (e.repeat || paused || e.ctrlKey || e.metaKey) return; if (e.code === 'KeyQ') cycleWeapon(); else if (e.code === 'KeyC') { panelOpen === 'work' ? closePanels() : openPanel('work'); } });
+(function () {
+  const b = document.getElementById('bMap'), nm = { meadow: 'Meadow Valley', palace: 'Palace Kingdom' }; let armed = 0;
+  const label = () => { b.textContent = 'Map: ' + nm[MAPID]; b.classList.remove('on'); };
+  label();
+  b.addEventListener('click', () => {
+    if (!armed) { b.textContent = 'Tap again: go to ' + nm[MAPID === 'palace' ? 'meadow' : 'palace']; b.classList.add('on'); armed = setTimeout(() => { armed = 0; label(); }, 3500); return; }
+    clearTimeout(armed); armed = 0;
+    try { save(); localStorage.setItem('blockyard-map-v1', MAPID === 'palace' ? 'meadow' : 'palace'); } catch (e) { }
+    location.reload();
+  });
+})();
 click('bBuild', () => { panelOpen === 'build' ? closePanels() : openPanel('build'); });
 click('bBlocks', () => { panelOpen === 'blocks' ? closePanels() : openPanel('blocks'); });
 click('bBook', () => { panelOpen === 'book' ? closePanels() : openPanel('book'); });
 click('bView', toggleView);
 click('bFly', () => setFly(!flying));
-click('bMenu', () => { const u = document.getElementById('utils'); const o = u.classList.toggle('open'); document.getElementById('bMenu').setAttribute('aria-expanded', o); });
-document.addEventListener('pointerdown', e => { const u = document.getElementById('utils'); if (u.classList.contains('open') && !u.contains(e.target)) { u.classList.remove('open'); } });
-document.getElementById('drawer').addEventListener('click', e => { if (e.target.closest('button') && !/bTrail|bSound|bFly|bView/.test(e.target.closest('button').id)) document.getElementById('utils').classList.remove('open'); });
+click('bMenu', () => { const u = document.getElementById('utils'); const o = u.classList.toggle('open'); document.getElementById('menuShade').classList.toggle('open', o); document.getElementById('bMenu').setAttribute('aria-expanded', o); });
+document.addEventListener('pointerdown', e => { const u = document.getElementById('utils'); if (u.classList.contains('open') && !u.contains(e.target)) { u.classList.remove('open'); document.getElementById('menuShade').classList.remove('open'); } });
+document.getElementById('drawer').addEventListener('click', e => { if (e.target.closest('button') && !/bTrail|bSound|bFly|bView|bMap|bReset/.test(e.target.closest('button').id)) { document.getElementById('utils').classList.remove('open'); document.getElementById('menuShade').classList.remove('open'); } });
 click('bMore', () => { const m = document.getElementById('more'); m.hidden = !m.hidden; });
 click('bTrail', () => setTrail(!trailOn));
 click('bTime', skipTime);
@@ -2124,6 +2424,14 @@ bReset.addEventListener('click', () => {
   hunt = { r: 0, found: new Set() }; buildChests();
 });
 
+document.querySelectorAll('.mapb').forEach(b => {
+  b.classList.toggle('on', b.dataset.map === MAPID);
+  b.addEventListener('click', () => {
+    if (b.dataset.map === MAPID) return;
+    try { localStorage.setItem(NAME_KEY, cleanName(document.getElementById('pname').value)); localStorage.setItem(ROOM_KEY, (document.getElementById('rcode').value || 'family').trim() || 'family'); localStorage.setItem('blockyard-map-v1', b.dataset.map); } catch (e) { }
+    location.reload();
+  });
+});
 const charsEl = document.getElementById('chars');
 CHARS.forEach(ch => {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'card'; b.dataset.id = ch.id;
@@ -2219,7 +2527,7 @@ function update(dt) {
   pushPresence(dt);
 }
 function updateAlways(dt) {
-  updateParts(dt); updateAnimals(dt); updateZombies(dt); updateSparks(dt); updateFireworks(dt); updateChests(dt, clock); updateRemotes(dt, clock);
+  updateParts(dt); updateAnimals(dt); updateZombies(dt); updateDrops(dt); updateSparks(dt); updateFireworks(dt); updateChests(dt, clock); updateRemotes(dt, clock);
 }
 
 /* ---------- boot ---------- */
