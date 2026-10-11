@@ -56,9 +56,14 @@ body.touch #hud { bottom: auto; top: 0; padding: calc(10px + env(safe-area-inset
 #count { position: fixed; left: 0; right: 0; top: 34%; text-align: center; font: 120px/1 var(--font-display); color: #ffcf3f; text-shadow: 6px 6px 0 #0c0906, 0 0 30px rgba(255, 120, 0, .8); pointer-events: none; opacity: 0; z-index: 7; }
 #count.show { animation: cpop .95s ease-out; }
 @keyframes cpop { 0% { opacity: 0; transform: scale(2.4); } 15% { opacity: 1; transform: scale(1); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.7); } }
-#wpick{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;display:flex;gap:8px;padding:8px;background:rgba(20,30,50,.88);border-radius:16px}
+#wpick{position:fixed;left:50%;bottom:calc(110px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:25;display:flex;flex-direction:column;gap:6px;padding:8px;background:rgba(20,30,50,.9);border-radius:16px;max-width:96vw}
+#wpick .wrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#wpick .wrow span{color:#fff;font:700 13px system-ui,sans-serif;min-width:74px}
+#wpick .wdone{min-height:40px;background:#3a8f4a}
+.hrow{display:flex;gap:8px}
+.hrow .ub{flex:1}
 #wpick[hidden]{display:none!important}
-#wpick button{min-width:84px;min-height:56px;font:700 15px system-ui,sans-serif;border:3px solid #fff5;border-radius:12px;background:#2c4a78;color:#fff}
+#wpick button{min-width:70px;min-height:46px;font:700 15px system-ui,sans-serif;border:3px solid #fff5;border-radius:12px;background:#2c4a78;color:#fff}
 #wpick button.on{background:#ffb02e;color:#222;border-color:#fff}
 #partsRow { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 .part { display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 2px solid var(--line); border-radius: 4px; padding: 6px 9px; font: 800 13px/1 var(--font-body); color: var(--ink); }
@@ -232,7 +237,7 @@ body.touch .keys.t { display: grid; }
 <div id="menuShade"></div>
 <div id="utils">
   <button class="ub big" id="bBuild" type="button">Build helper <kbd>B</kbd></button>
-  <button class="ub" id="bWeap" type="button">Weapon: none</button>
+  <button class="ub" id="bWeap" type="button">Hands: empty</button>
   <button class="ub" id="bMenu" type="button" aria-expanded="false">&#9776; Menu</button>
   <div id="drawer">
   <button class="ub big" id="bWork" type="button">Workshop <kbd>C</kbd></button>
@@ -270,7 +275,7 @@ body.touch .keys.t { display: grid; }
 <div id="wpick" hidden></div>
 <div class="sheet" id="pWork" hidden>
   <h2>WORKSHOP</h2>
-  <p>Collect parts, then put them together to make a weapon. Break logs for wood, break stone for stone, pick up pink magic gems or find treasure for gems, and swim in water for water drops.</p>
+  <p>Collect parts, then put them together to make weapons, a shield, a princess wand or a bow. Hold one in each hand! Break logs for wood, break stone for stone, pick up pink magic gems or find treasure for gems, and swim in water for water drops.</p>
   <div id="partsRow"></div>
   <div id="recipes"></div>
   <button class="close" type="button" data-close>Close</button>
@@ -304,7 +309,7 @@ body.touch .keys.t { display: grid; }
 
 <div id="overlay">
   <div class="panel">
-    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 19 &middot; fewer trees</div>
+    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 20 &middot; two hands and fireworks</div>
     <p>Build anything. Dig anything. Find treasure, pick flowers and play with friends.</p>
     <h2>CHOOSE A MAP</h2>
     <div id="maps">
@@ -330,7 +335,8 @@ body.touch .keys.t { display: grid; }
       <dt>E</dt><dd>More blocks</dd>
       <dt>K</dt><dd>Adventure book</dd>
       <dt>C</dt><dd>Workshop: make weapons</dd>
-      <dt>Q</dt><dd>Switch weapon</dd>
+      <dt>Q</dt><dd>Switch right-hand weapon</dd>
+      <dt>Z</dt><dd>Switch left-hand weapon</dd>
       <dt>V</dt><dd>See your hero from behind</dd>
     </dl>
     <dl class="keys t">
@@ -397,7 +403,7 @@ let HOTBAR = [GRASS, DIRT, STONE, PLANKS, BRICK, GLASS, RED, BLUE, YELLOW];
 /* ---------- shared mutable state (declared up front) ---------- */
 let sel = 0, paused = true, panelOpen = null, lockEver = false, hold = null, holdCD = 0, lastSpace = 0;
 let viewMode = 0, flying = false, inWater = false, onGround = false, standing = 0, trailOn = false;
-let weapon = null;
+let weapon = null, weaponL = null, swingL = 0, nextHand = 0;
 let yaw = 0, pitch = 0, tod = 0.12, daylight = 1, swing = 0, walkPhase = 0, spawn = null;
 let myName = 'Player', roomCode = 'family';
 let net = null, booted = false;
@@ -1013,7 +1019,7 @@ function buildModel(ch, list, hatId, backId) {
 }
 
 /* ---------- first-person hand ---------- */
-let model = null, handRoot = null, armPivot = null, heldMesh = null;
+let model = null, handRoot = null, armPivot = null, heldMesh = null, armPivotL = null, heldMeshL = null;
 function buildHand(ch) {
   const root = new THREE.Group(), piv = new THREE.Group();
   const sleeve = sm(ch.top, true), skin = sm(ch.skin, true);
@@ -1021,13 +1027,18 @@ function buildHand(ch) {
   sl.renderOrder = hd.renderOrder = 999;
   piv.add(sl, hd);
   piv.position.set(0.36, -0.36, -0.42); piv.rotation.set(0.45, 0.28, 0);
-  root.add(piv); camera.add(root);
-  return { root, piv };
+  const pivL = new THREE.Group(), slL = mk(0.17, 0.17, 0.46, sleeve, 0, 0, -0.1), hdL = mk(0.17, 0.17, 0.16, skin, 0, 0, -0.41);
+  slL.renderOrder = hdL.renderOrder = 999; pivL.add(slL, hdL);
+  pivL.position.set(-0.36, -0.36, -0.42); pivL.rotation.set(0.45, -0.28, 0);
+  root.add(piv, pivL); camera.add(root);
+  return { root, piv, pivL };
 }
 function setHeld() {
   if (!armPivot) return;
-  if (heldMesh) { armPivot.remove(heldMesh); if (heldMesh.geometry) heldMesh.geometry.dispose(); else disposeTree(heldMesh); heldMesh = null; }
-  if (weapon) { heldMesh = makeWeaponMesh(weapon); armPivot.add(heldMesh); return; }
+  if (heldMesh) { armPivot.remove(heldMesh); disposeTree(heldMesh); heldMesh = null; }
+  if (heldMeshL) { armPivotL.remove(heldMeshL); disposeTree(heldMeshL); heldMeshL = null; }
+  if (weaponL) { heldMeshL = makeWeaponMesh(weaponL, true); armPivotL.add(heldMeshL); }
+  if (weapon) { heldMesh = makeWeaponMesh(weapon, false); armPivot.add(heldMesh); return; }
   heldMesh = new THREE.Mesh(blockGeometry(HOTBAR[sel], 0.2), matHeld);
   heldMesh.position.set(0, 0.17, -0.42); heldMesh.rotation.set(0.1, 0.6, 0); heldMesh.renderOrder = 999;
   armPivot.add(heldMesh);
@@ -1037,10 +1048,10 @@ function applyCharacter() {
   const ch = curChar();
   if (model) { scene.remove(model.g); disposeTree(model.g); }
   if (handRoot) { camera.remove(handRoot); disposeTree(handRoot); }
-  shaded.length = 0; heldMesh = null;
+  shaded.length = 0; heldMesh = null; heldMeshL = null;
   model = buildModel(ch, shaded, stats.hat, stats.back);
   scene.add(model.g);
-  const h = buildHand(ch); handRoot = h.root; armPivot = h.piv;
+  const h = buildHand(ch); handRoot = h.root; armPivot = h.piv; armPivotL = h.pivL;
   setHeld(); applyView();
 }
 function applyView() {
@@ -1088,13 +1099,13 @@ function beep(f, d, type, v) {
 function chime() { beep(660, 0.12, 'triangle', 0.1); setTimeout(() => beep(880, 0.18, 'triangle', 0.1), 110); setTimeout(() => beep(1180, 0.25, 'triangle', 0.1), 230); }
 
 /* ---------- sparks (fireworks, confetti, trails) and block crumbs ---------- */
-const SN = 1400, spP = new Float32Array(SN * 3), spC = new Float32Array(SN * 3), spV = new Float32Array(SN * 3), spL = new Float32Array(SN);
+const SN = 6000, spP = new Float32Array(SN * 3), spC = new Float32Array(SN * 3), spV = new Float32Array(SN * 3), spL = new Float32Array(SN);
 let spI = 0;
 for (let i = 0; i < SN; i++) spP[i * 3 + 1] = -9999;
 const spGeo = new THREE.BufferGeometry();
 spGeo.setAttribute('position', new THREE.BufferAttribute(spP, 3));
 spGeo.setAttribute('color', new THREE.BufferAttribute(spC, 3));
-const spPts = new THREE.Points(spGeo, new THREE.PointsMaterial({ size: 6, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
+const spPts = new THREE.Points(spGeo, new THREE.PointsMaterial({ size: 8, sizeAttenuation: false, vertexColors: true, transparent: true, depthWrite: false, fog: false }));
 spPts.frustumCulled = false; scene.add(spPts);
 function spark(x, y, z, vx, vy, vz, c, life) {
   const i = spI, k = i * 3; spI = (spI + 1) % SN;
@@ -1138,6 +1149,55 @@ function updateFireworks(dt) {
       if (Math.hypot(k.x - pos.x, k.z - pos.z) < 30) beep(120, 0.3, 'sawtooth', 0.05);
       rockets.splice(r, 1);
     }
+  }
+}
+/* ---------- night fireworks show ---------- */
+const shells = []; let showT = 0, showNext = 0, showCool = 25 + Math.random() * 30, showN = 0;
+function startShow(fromNet) {
+  if (showT > 0) return;
+  showT = 30; showNext = 1.2; showN = 0;
+  banner('Fireworks show!', 'Look up at the sky'); chime();
+  if (!fromNet && net) { try { net.rm.emit('e', { t: 'show' }).catch(() => { }); } catch (e) { } }
+}
+function launchShell(big) {
+  const a = Math.random() < 0.7 ? Math.atan2(-Math.cos(yaw), -Math.sin(yaw)) + (Math.random() - 0.5) * 2.4 : Math.random() * 6.283, d = 34 + Math.random() * 26;
+  const x = pos.x + Math.cos(a) * d, z = pos.z + Math.sin(a) * d, y0 = Math.max(pos.y - 3, 4);
+  const ty = pos.y + 26 + Math.random() * 20;
+  const pats = ['sphere', 'ring', 'heart', 'star', 'willow', 'double', 'sphere'];
+  shells.push({ x, y: y0, z, ty, vy: (ty - y0) / 1.3, t: 0, life: 1.3, pat: pats[Math.floor(Math.random() * pats.length)], h: Math.random(), big });
+  beep(260, 0.25, 'sawtooth', 0.025);
+}
+function burstShell(k) {
+  const col = new THREE.Color(), col2 = new THREE.Color();
+  const hue = k.h; col.setHSL(hue, 1, 0.6); col2.setHSL((hue + 0.45) % 1, 1, 0.65);
+  const dx = k.x - pos.x, dz = k.z - pos.z, dd = Math.hypot(dx, dz) || 1, ux = dz / dd, uz = -dx / dd;
+  const out = (vx, vy, vz, c, life) => spark(k.x, k.y, k.z, vx, vy, vz, c, life);
+  const sphere = (n, sp, c, life) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, u = Math.random() * 2 - 1, r = Math.sqrt(1 - u * u), q = sp * (0.85 + Math.random() * 0.15); out(Math.cos(a) * r * q, u * q, Math.sin(a) * r * q, c, life); } };
+  const plane = (pts, sp, c, life) => { for (const [px, py] of pts) out(ux * px * sp, py * sp, uz * px * sp, c, life); };
+  if (k.pat === 'sphere') sphere(220, 21, col, 1.9);
+  else if (k.pat === 'willow') { col.setHSL(0.11, 1, 0.62); sphere(150, 12, col, 3.4); }
+  else if (k.pat === 'double') { sphere(140, 22, col, 1.9); sphere(90, 11, col2, 1.7); }
+  else if (k.pat === 'ring') { const tl = 0.3 + Math.random() * 0.9, fx = dx / dd, fz = dz / dd; for (let i = 0; i < 90; i++) { const an = i / 90 * 6.283, px = Math.cos(an) * 21, py = Math.sin(an) * 21; out(ux * px + fx * py * Math.sin(tl), py * Math.cos(tl), uz * px + fz * py * Math.sin(tl), col, 1.6); } sphere(50, 8, col2, 1.4); }
+  else if (k.pat === 'heart') { col.setHSL(0.95, 1, 0.62); const pts = []; for (let i = 0; i < 110; i++) { const t = i / 110 * 6.283; pts.push([16 * Math.pow(Math.sin(t), 3) / 16, (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) / 16 + 0.1]); } plane(pts, 19, col, 1.9); }
+  else { const pts = [], V = []; for (let i = 0; i < 10; i++) { const a = i / 10 * 6.283 + 1.5708, r = i % 2 ? 0.42 : 1; V.push([Math.cos(a) * r, Math.sin(a) * r]); } for (let i = 0; i < 10; i++) { const A = V[i], B = V[(i + 1) % 10]; for (let j = 0; j < 10; j++) pts.push([A[0] + (B[0] - A[0]) * j / 10, A[1] + (B[1] - A[1]) * j / 10]); } col.setHSL(0.14, 1, 0.62); plane(pts, 20, col, 1.9); }
+  if (Math.hypot(dx, dz) < 90) { setTimeout(() => { beep(70 + Math.random() * 40, 0.45, 'sawtooth', 0.07); for (let i = 0; i < 4; i++) setTimeout(() => beep(1800 + Math.random() * 800, 0.03, 'square', 0.015), 120 + i * 70); }, 150); }
+}
+function updateShow(dt) {
+  if (showT > 0) {
+    showT -= dt; showNext -= dt;
+    while (showNext <= 0) {
+      showN++; const fin = showT < 5;
+      launchShell(false); if (fin) { launchShell(true); launchShell(true); }
+      showNext += fin ? 0.28 : 0.55 + Math.random() * 0.8;
+    }
+    if (showT <= 0) { showCool = 70 + Math.random() * 80; }
+  } else if (daylight < 0.3 && !paused) {
+    showCool -= dt; if (showCool <= 0 && zIsAuth()) startShow(false);
+  } else if (daylight > 0.55) showCool = Math.max(showCool, 15);
+  for (let r = shells.length - 1; r >= 0; r--) {
+    const k = shells[r]; k.t += dt; k.y += k.vy * dt; k.vy -= 2 * dt;
+    spark(k.x, k.y, k.z, (Math.random() - 0.5) * 0.8, -3, (Math.random() - 0.5) * 0.8, tc.set(0xffd27a), 0.6);
+    if (k.t >= k.life) { burstShell(k); shells.splice(r, 1); }
   }
 }
 const pGeo = new THREE.BoxGeometry(0.13, 0.13, 0.13), pMats = new Map(), parts = [];
@@ -1386,11 +1446,11 @@ function zombieKnock(z, kx, kz, dmg) {
   const kd = Math.hypot(kx, kz) || 1; z.kx = kx / kd * (isBig(z) ? 2.5 : 7); z.kz = kz / kd * (isBig(z) ? 2.5 : 7); z.kt = isBig(z) ? 0.15 : 0.22;
   if (z.hp <= 0 && !z.ko) z.ko = 0.7;
 }
-function zombieHit() {
+function zombieHit(w) {
   if (!zombies.length) return false;
   const ex = pos.x, ey = pos.y + 1.6, ez = pos.z, cp = Math.cos(pitch);
   const dx = -Math.sin(yaw) * cp, dy = Math.sin(pitch), dz = -Math.cos(yaw) * cp;
-  let best = null, bd = 1e9; const ws = wstats();
+  let best = null, bd = 1e9; const ws = wstats(w);
   for (const z of zombies) {
     if (z.ko) continue;
     const big = isBig(z), bs = z.bs || 1;
@@ -1524,8 +1584,8 @@ function updateZombies(dt) {
     const bigZ = isBig(z), bsz = z.bs || 1;
     if (md < (bigZ ? 2.6 * bsz : 1.05) && Math.abs(gp.y - pos.y) < (bigZ ? 3 * bsz : 1.6) && z.cd <= 0 && z.pop >= 1) {
       z.cd = bigZ ? 2 : 1.4; zBonk = 0.35;
-      const nd = md || 1; zKnock.vx = mx / nd * (bigZ ? 10 : 6); zKnock.vz = mz / nd * (bigZ ? 10 : 6); zKnock.t = bigZ ? 0.35 : 0.25;
-      beep(bigZ ? 70 : 130, bigZ ? 0.35 : 0.2, 'sawtooth', bigZ ? 0.14 : 0.08); toast(bigZ ? (z.kind === 'mon' ? 'STOMP! Hit the monster!' : 'STOMP! Hit the dino!') : 'Boo! Knock it out!');
+      const nd = md || 1, sh = hasW('shield') ? 0.3 : 1; zKnock.vx = mx / nd * (bigZ ? 10 : 6) * sh; zKnock.vz = mz / nd * (bigZ ? 10 : 6) * sh; zKnock.t = bigZ ? 0.35 : 0.25; if (sh < 1) { confetti(pos.x, pos.y + 1.4, pos.z, 14, 2); swing = 1; swingL = 1; }
+      beep(bigZ ? 70 : 130, bigZ ? 0.35 : 0.2, 'sawtooth', bigZ ? 0.14 : 0.08); toast(hasW('shield') ? 'Your shield blocked it!' : bigZ ? (z.kind === 'mon' ? 'STOMP! Hit the monster!' : 'STOMP! Hit the dino!') : 'Boo! Knock it out!');
     }
   }
   if (auth && net) { zSendT -= dt; if (zSendT <= 0) { zSendT = zombies.length ? 0.12 : 0.6; try { net.rm.emit('z', { a: zombieState() }).catch(() => { }); } catch (e) { } } }
@@ -1649,7 +1709,7 @@ for (let i = 0; i < 9; i++) {
 function select(i) {
   sel = (i + HOTBAR.length) % HOTBAR.length;
   [...hotbarEl.children].forEach((c, k) => c.classList.toggle('sel', k === sel));
-  if (weapon) { weapon = null; weaponLabel(); }
+  if (weapon) { weapon = null; weaponLabel(); try { saveInv(); } catch (e) { } }
   flash(NAMES[HOTBAR[sel]]); setHeld();
 }
 const blockGrid = document.getElementById('blockGrid');
@@ -1657,7 +1717,7 @@ PALETTE.forEach(id => {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.title = NAMES[id]; b.setAttribute('aria-label', NAMES[id]);
   const cv = document.createElement('canvas'); cv.width = cv.height = 16; drawTile(cv.getContext('2d'), BT[id][2], 16);
   b.appendChild(cv);
-  b.addEventListener('click', () => { HOTBAR[sel] = id; refreshSlot(sel); if (weapon) { weapon = null; weaponLabel(); } setHeld(); flash(NAMES[id]); saveSoon(); closePanels(); });
+  b.addEventListener('click', () => { HOTBAR[sel] = id; refreshSlot(sel); if (weapon) { weapon = null; weaponLabel(); saveInv(); } setHeld(); flash(NAMES[id]); saveSoon(); closePanels(); });
   blockGrid.appendChild(b);
 });
 
@@ -1673,20 +1733,25 @@ function collect(id) {
 }
 
 /* ---------- parts, workshop and weapons ---------- */
-const inv = { wood: 0, stone: 0, gem: 0, drop: 0 }, owned = { sword: false, axe: false, gun: false };
-try { const j = JSON.parse(localStorage.getItem(INV_KEY) || 'null'); if (j) { for (const k in inv) inv[k] = Math.max(0, (j.inv && +j.inv[k]) || 0); for (const k in owned) owned[k] = !!(j.own && j.own[k]); } } catch (e) { }
-function saveInv() { try { localStorage.setItem(INV_KEY, JSON.stringify({ inv, own: owned })); } catch (e) { } }
+const inv = { wood: 0, stone: 0, gem: 0, drop: 0 }, owned = { sword: false, axe: false, gun: false, shield: false, wand: false, bow: false };
+try { const j = JSON.parse(localStorage.getItem(INV_KEY) || 'null'); if (j) { for (const k in inv) inv[k] = Math.max(0, (j.inv && +j.inv[k]) || 0); for (const k in owned) owned[k] = !!(j.own && j.own[k]); if (j.hands) { if (owned[j.hands.r]) weapon = j.hands.r; if (owned[j.hands.l] && j.hands.l !== weapon) weaponL = j.hands.l; } } } catch (e) { }
+function saveInv() { try { localStorage.setItem(INV_KEY, JSON.stringify({ inv, own: owned, hands: { r: weapon, l: weaponL } })); } catch (e) { } }
 const PART_NAMES = { wood: 'Wood', stone: 'Stone', gem: 'Gem', drop: 'Water drop' };
 const PART_COL = { wood: '#9a6a2e', stone: '#8b8b8b', gem: '#ff6fd0', drop: '#4aa8ff' };
 const RECIPES = [
   { id: 'sword', name: 'Magic Sword', need: { wood: 1, stone: 2, gem: 1 }, desc: 'Knocks monsters out in fewer hits.' },
   { id: 'axe', name: 'Mighty Axe', need: { wood: 2, stone: 2, gem: 1 }, desc: 'The strongest hit. Also gives double wood from logs.' },
-  { id: 'gun', name: 'Water Gun', need: { wood: 1, gem: 1, drop: 2 }, desc: 'Splash monsters from far away.' }
+  { id: 'gun', name: 'Water Gun', need: { wood: 1, gem: 1, drop: 2 }, desc: 'Splash monsters from far away.' },
+  { id: 'shield', name: 'Royal Shield', need: { wood: 2, stone: 2, gem: 1 }, desc: 'Hold it in one hand. Bumps and stomps push you back much less.' },
+  { id: 'wand', name: 'Princess Wand', need: { wood: 1, gem: 2, drop: 1 }, desc: 'Sparkly magic stars that bonk monsters from far away.' },
+  { id: 'bow', name: 'Bow and Arrow', need: { wood: 3, stone: 1, gem: 1 }, desc: 'Shoots arrows a long way. Strong hit!' }
 ];
-const WNAME = { sword: 'Magic Sword', axe: 'Mighty Axe', gun: 'Water Gun' };
+const WNAME = { sword: 'Magic Sword', axe: 'Mighty Axe', gun: 'Water Gun', shield: 'Royal Shield', wand: 'Princess Wand', bow: 'Bow and Arrow' };
+const ATTACK = { sword: 1, axe: 1, gun: 1, wand: 1, bow: 1 };
 function addPart(k, n) { n = n || 1; inv[k] += n; saveInv(); toast('+' + n + ' ' + PART_NAMES[k] + '   (you have ' + inv[k] + ')'); if (sheets.work && !sheets.work.hidden) renderWork(); }
-function wmesh(w, h, d, color, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color, depthTest: false })); m.position.set(x, y, z); m.renderOrder = 999; return m; }
-function makeWeaponMesh(w) {
+let wro = 0;
+function wmesh(w, h, d, color, x, y, z) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color, depthTest: false })); m.position.set(x, y, z); m.renderOrder = 1000 + (wro++ % 800); return m; }
+function makeWeaponMesh(w, left) {
   const g = new THREE.Group();
   if (w === 'sword') {
     g.add(wmesh(0.05, 0.5, 0.014, 0xdfe8f2, 0, 0.36, 0), wmesh(0.03, 0.46, 0.016, 0xffffff, 0, 0.36, 0.004), wmesh(0.22, 0.045, 0.05, 0xffcf3f, 0, 0.1, 0), wmesh(0.05, 0.16, 0.05, 0x9a6a2e, 0, 0, 0), wmesh(0.07, 0.07, 0.07, 0xff6fd0, 0, -0.1, 0));
@@ -1694,32 +1759,57 @@ function makeWeaponMesh(w) {
   } else if (w === 'axe') {
     g.add(wmesh(0.05, 0.62, 0.05, 0x9a6a2e, 0, 0.2, 0), wmesh(0.26, 0.2, 0.05, 0xb9c2cc, 0.13, 0.46, 0), wmesh(0.05, 0.16, 0.06, 0xe8eef4, 0.26, 0.46, 0));
     g.position.set(0.02, 0.0, -0.42); g.rotation.set(-0.45, 0.3, 0.1);
+  } else if (w === 'shield') {
+    g.add(wmesh(0.4, 0.5, 0.03, 0xffd23f, 0, 0.18, 0), wmesh(0.34, 0.44, 0.03, 0x2f6fe0, 0, 0.18, -0.01), wmesh(0.12, 0.12, 0.03, 0xffffff, 0, 0.22, -0.02), wmesh(0.05, 0.2, 0.03, 0xffffff, 0, 0.22, -0.02), wmesh(0.2, 0.05, 0.03, 0xff5fa8, 0, 0.1, -0.025));
+    g.position.set(0.0, 0.0, -0.5); g.rotation.set(-0.15, 0.35, 0);
+  } else if (w === 'wand') {
+    g.add(wmesh(0.035, 0.6, 0.035, 0xfff0f8, 0, 0.25, 0), wmesh(0.17, 0.17, 0.04, 0xffd23f, 0, 0.62, 0), wmesh(0.07, 0.3, 0.04, 0xffe27a, 0, 0.62, 0), wmesh(0.3, 0.07, 0.04, 0xffe27a, 0, 0.62, 0), wmesh(0.06, 0.06, 0.06, 0xff6fd0, 0, 0.62, -0.03), wmesh(0.06, 0.06, 0.05, 0xb98cff, 0, 0.08, 0), wmesh(0.06, 0.06, 0.05, 0x6fd6ff, 0, -0.02, 0));
+    g.position.set(0.02, 0.02, -0.45); g.rotation.set(-0.3, 0.25, 0.1);
+  } else if (w === 'bow') {
+    g.add(wmesh(0.045, 0.2, 0.045, 0x9a6a2e, 0, 0.0, 0), wmesh(0.045, 0.22, 0.045, 0x9a6a2e, -0.06, 0.2, 0), wmesh(0.045, 0.22, 0.045, 0x9a6a2e, -0.06, -0.2, 0), wmesh(0.045, 0.2, 0.045, 0x7a4b25, -0.14, 0.4, 0), wmesh(0.045, 0.2, 0.045, 0x7a4b25, -0.14, -0.4, 0), wmesh(0.012, 0.9, 0.012, 0xffffff, -0.16, 0.0, 0.0), wmesh(0.025, 0.025, 0.55, 0xd8c08a, -0.1, 0.0, -0.22), wmesh(0.07, 0.07, 0.03, 0xdfe8f2, -0.1, 0.0, -0.5), wmesh(0.08, 0.04, 0.02, 0xff5fa8, -0.1, 0.0, 0.04));
+    g.position.set(0.12, 0.02, -0.4); g.rotation.set(0.0, 0.1, 0);
   } else {
     g.add(wmesh(0.13, 0.15, 0.4, 0x3a86ff, 0, 0, 0), wmesh(0.06, 0.06, 0.24, 0xb8e2ff, 0, 0.02, -0.3), wmesh(0.12, 0.13, 0.17, 0x4ad0ff, 0, 0.14, 0.04), wmesh(0.07, 0.17, 0.07, 0xff8a1e, 0, -0.14, 0.1));
     g.position.set(0.0, 0.1, -0.5); g.rotation.set(0.0, 0.1, 0);
   }
+  if (left) { g.position.x *= -1; g.rotation.y *= -1; g.rotation.z *= -1; }
   return g;
 }
-function weaponLabel() { const b = document.getElementById('bWeap'); if (b) { b.textContent = 'Weapon: ' + (weapon ? WNAME[weapon] : 'none'); b.classList.toggle('on', !!weapon); } }
-function setWeapon(w) { weapon = w; setHeld(); weaponLabel(); if (w) flash(WNAME[w]); }
-function cycleWeapon() {
+function weaponLabel() { const b = document.getElementById('bWeap'); if (b) { const a = weapon ? WNAME[weapon] : 'empty', l = weaponL ? WNAME[weaponL] : 'empty'; b.textContent = (weapon || weaponL) ? 'Hands: ' + a + ' + ' + l : 'Hands: empty'; b.classList.toggle('on', !!(weapon || weaponL)); } }
+function setHand(hand, w) {
+  if (w && hand === 'R' && weaponL === w) weaponL = null;
+  if (w && hand === 'L' && weapon === w) weapon = null;
+  if (hand === 'R') weapon = w; else weaponL = w;
+  saveInv(); setHeld(); weaponLabel(); if (w) flash((hand === 'R' ? 'Right: ' : 'Left: ') + WNAME[w]);
+}
+function setWeapon(w) { setHand('R', w); }
+function cycleHand(hand) {
   const list = [null].concat(Object.keys(owned).filter(k => owned[k]));
   if (list.length === 1) { toast('Make a weapon first: Menu, then Workshop'); openPanel('work'); return; }
-  setWeapon(list[(list.indexOf(weapon) + 1) % list.length]);
+  const cur = hand === 'R' ? weapon : weaponL;
+  setHand(hand, list[(list.indexOf(cur) + 1) % list.length]);
 }
+function cycleWeapon() { cycleHand('R'); }
 function showWpick() {
   const box = document.getElementById('wpick'); box.textContent = '';
-  const mk = (id, label) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (weapon === id) b.className = 'on'; b.addEventListener('click', () => { setWeapon(id); box.hidden = true; }); box.appendChild(b); };
-  mk(null, 'Hand'); for (const k of Object.keys(owned)) if (owned[k]) mk(k, WNAME[k]);
-  box.hidden = false; clearTimeout(showWpick.t); showWpick.t = setTimeout(() => { box.hidden = true; }, 6000);
+  for (const hand of ['R', 'L']) {
+    const row = document.createElement('div'); row.className = 'wrow';
+    const lab = document.createElement('span'); lab.textContent = hand === 'R' ? 'Right hand' : 'Left hand'; row.appendChild(lab);
+    const cur = hand === 'R' ? weapon : weaponL;
+    const mk2 = (id, label) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (cur === id) b.className = 'on'; b.addEventListener('click', () => { setHand(hand, id); showWpick(); }); row.appendChild(b); };
+    mk2(null, hand === 'R' ? 'Block' : 'Empty'); for (const k of Object.keys(owned)) if (owned[k]) mk2(k, WNAME[k]);
+    box.appendChild(row);
+  }
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'wdone'; x.textContent = 'Done'; x.addEventListener('click', () => { box.hidden = true; }); box.appendChild(x);
+  box.hidden = false; clearTimeout(showWpick.t); showWpick.t = setTimeout(() => { box.hidden = true; }, 12000);
 }
 function canMake(r) { for (const k in r.need) if (inv[k] < r.need[k]) return false; return true; }
 function makeWeapon(r) {
   if (!canMake(r)) return;
   for (const k in r.need) inv[k] -= r.need[k];
-  owned[r.id] = true; saveInv(); setWeapon(r.id); renderWork();
+  owned[r.id] = true; saveInv(); setHand(!weapon || weaponL ? 'R' : 'L', r.id); renderWork();
   chime(); confetti(pos.x, pos.y + 1.5, pos.z, 40, 3);
-  banner('You made the ' + r.name + '!', 'It is in your hand');
+  banner('You made the ' + r.name + '!', 'It is in your hand. Menu, Hands: pick what goes in each hand.');
   closePanels();
 }
 function renderWork() {
@@ -1733,7 +1823,11 @@ function renderWork() {
     const need = document.createElement('div'); need.className = 'need';
     for (const k in r.need) { const c = document.createElement('span'); c.className = 'chip' + (inv[k] >= r.need[k] ? ' ok' : ''); c.textContent = r.need[k] + ' ' + PART_NAMES[k] + ' (' + Math.min(inv[k], 99) + ')'; need.appendChild(c); }
     const b = document.createElement('button'); b.type = 'button'; b.className = 'ub big';
-    if (owned[r.id]) { b.textContent = weapon === r.id ? 'Holding it' : 'Hold it'; b.addEventListener('click', () => { setWeapon(r.id); closePanels(); }); }
+    if (owned[r.id]) {
+      const wr = document.createElement('div'); wr.className = 'hrow';
+      for (const hand of ['R', 'L']) { const hb = document.createElement('button'); hb.type = 'button'; hb.className = 'ub big'; const on = (hand === 'R' ? weapon : weaponL) === r.id; hb.textContent = (hand === 'R' ? 'Right hand' : 'Left hand') + (on ? ' (holding)' : ''); hb.addEventListener('click', () => { setHand(hand, on ? null : r.id); renderWork(); }); wr.appendChild(hb); }
+      card.append(h, p, need, wr); box.appendChild(card); continue;
+    }
     else { b.textContent = canMake(r) ? 'Put it together!' : 'Need more parts'; b.disabled = !canMake(r); b.addEventListener('click', () => makeWeapon(r)); }
     card.append(h, p, need, b); box.appendChild(card);
   }
@@ -1749,16 +1843,39 @@ function waterShot() {
   for (let i = 0; i < 22; i++) { const t = 0.6 + i * 0.35; spark(eye.x + dir.x * t, eye.y + dir.y * t - 0.15, eye.z + dir.z * t, dir.x * 2 + (Math.random() - 0.5), dir.y * 2 + Math.random() * 0.5, dir.z * 2 + (Math.random() - 0.5), c, 0.5 + Math.random() * 0.3); }
   beep(700 + Math.random() * 200, 0.06, 'sine', 0.05);
 }
-const wstats = () => weapon === 'sword' ? { dmg: 2, rng: 1.25, cos: 0 } : weapon === 'axe' ? { dmg: 3, rng: 1.1, cos: 0 } : weapon === 'gun' ? { dmg: 1, rng: 2.8, cos: 0.1 } : { dmg: 1, rng: 1, cos: 0 };
+const wstats = (w = weapon) => w === 'sword' ? { dmg: 2, rng: 1.25, cos: 0 } : w === 'axe' ? { dmg: 3, rng: 1.1, cos: 0 } : w === 'gun' ? { dmg: 1, rng: 2.8, cos: 0.1 } : w === 'bow' ? { dmg: 2, rng: 3.4, cos: 0.12 } : w === 'wand' ? { dmg: 1, rng: 2.4, cos: 0.1 } : { dmg: 1, rng: 1, cos: 0 };
+const hasW = id => weapon === id || weaponL === id;
+const arrows = [];
+function shootArrow() {
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  const g = new THREE.Group(); const m1 = new THREE.MeshBasicMaterial({ color: 0xd8c08a }), m2 = new THREE.MeshBasicMaterial({ color: 0xffffff }), m3 = new THREE.MeshBasicMaterial({ color: 0xff5fa8 });
+  const sh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.9), m1), tip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.18), m2), fl = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.2), m3);
+  tip.position.z = -0.52; fl.position.z = 0.4; g.add(sh, tip, fl);
+  g.position.copy(eye).addScaledVector(dir, 0.8); g.position.y -= 0.15; g.lookAt(g.position.clone().add(dir)); scene.add(g);
+  arrows.push({ g, v: dir.multiplyScalar(38), t: 0 }); beep(300, 0.12, 'triangle', 0.08); setTimeout(() => beep(200, 0.1, 'square', 0.05), 70);
+}
+function updateArrows(dt) {
+  for (let i = arrows.length - 1; i >= 0; i--) { const a = arrows[i]; a.t += dt; a.v.y -= 6 * dt; a.g.position.addScaledVector(a.v, dt); a.g.lookAt(a.g.position.clone().add(a.v)); spark(a.g.position.x, a.g.position.y, a.g.position.z, 0, 0.2, 0, tc.set(0xffe9a0), 0.35); if (a.t > 0.55) { scene.remove(a.g); a.g.traverse(c => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); }); arrows.splice(i, 1); } }
+}
+function wandShot() {
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  for (let i = 0; i < 26; i++) { const t = 0.7 + i * 0.3; tc.setHSL((i * 0.07) % 1, 1, 0.65); spark(eye.x + dir.x * t, eye.y + dir.y * t - 0.1, eye.z + dir.z * t, (Math.random() - 0.5) * 1.5, Math.random() * 1.5, (Math.random() - 0.5) * 1.5, tc, 0.6 + Math.random() * 0.5); }
+  beep(900, 0.1, 'sine', 0.06); setTimeout(() => beep(1300, 0.14, 'sine', 0.06), 80);
+}
 function doBreak() {
-  swing = 1;
-  if (weapon === 'gun') { waterShot(); zombieHit(); return; }
-  if (zombieHit()) return;
+  const hs = []; if (ATTACK[weapon]) hs.push('R'); if (ATTACK[weaponL]) hs.push('L');
+  let hand = 'R', w = weapon;
+  if (hs.length) { hand = hs[nextHand++ % hs.length]; w = hand === 'R' ? weapon : weaponL; }
+  if (hand === 'L') swingL = 1; else swing = 1;
+  if (w === 'gun') { waterShot(); zombieHit(w); return; }
+  if (w === 'bow') { shootArrow(); zombieHit(w); return; }
+  if (w === 'wand') { wandShot(); zombieHit(w); return; }
+  if (zombieHit(w)) return;
   const h = raycast(6.5); if (!h) return;
   const i = idx(h.x, h.y, h.z), id = get(h.x, h.y, h.z);
   if (isDecor(id) && natural.has(i)) { natural.delete(i); collect(id); }
   setBlock(h.x, h.y, h.z, AIR, true); burst(h.x, h.y, h.z, id); beep(170, 0.12, 'square', 0.07);
-  if (id === WOOD) addPart('wood', weapon === 'axe' ? 2 : 1); else if (id === STONE) addPart('stone');
+  if (id === WOOD) addPart('wood', hasW('axe') ? 2 : 1); else if (id === STONE) addPart('stone');
 }
 function hatch(x, y, z, kind, mine) {
   addAnimal(kind, x, y, z, mine);
@@ -2245,6 +2362,7 @@ async function connectNet() {
       if (m.sameTab || !m.data) return;
       const d = m.data;
       if (d.t === 'egg' && KINDS.includes(d.k) && Number.isFinite(d.x) && Number.isFinite(d.y) && Number.isFinite(d.z)) hatch(d.x, d.y, d.z, d.k, false);
+      else if (d.t === 'show') startShow(true);
       else if (d.t === 'cheer') toast(cleanName(d.n) + ' finished: ' + String(d.q || '').slice(0, 40));
     }));
     renderFriends();
@@ -2417,9 +2535,10 @@ click('bWeap', () => {
   if (!list.length) { toast('Make a weapon first: Menu, then Workshop'); openPanel('work'); return; }
   showWpick();
 });
+weaponLabel();
 click('bWork', () => { panelOpen === 'work' ? closePanels() : openPanel('work'); });
 click('bMenuClose', () => { document.getElementById('utils').classList.remove('open'); document.getElementById('menuShade').classList.remove('open'); });
-window.addEventListener('keydown', e => { if (e.repeat || paused || e.ctrlKey || e.metaKey) return; if (e.code === 'KeyQ') cycleWeapon(); else if (e.code === 'KeyC') { panelOpen === 'work' ? closePanels() : openPanel('work'); } });
+window.addEventListener('keydown', e => { if (e.repeat || paused || e.ctrlKey || e.metaKey) return; if (e.code === 'KeyQ') cycleWeapon(); else if (e.code === 'KeyZ') cycleHand('L'); else if (e.code === 'KeyC') { panelOpen === 'work' ? closePanels() : openPanel('work'); } });
 (function () {
   const b = document.getElementById('bMap'), nm = { meadow: 'Meadow Valley', palace: 'Palace Kingdom' }; let armed = 0;
   const label = () => { b.textContent = 'Map: ' + nm[MAPID]; b.classList.remove('on'); };
@@ -2541,11 +2660,16 @@ function update(dt) {
   uwEl.hidden = get(Math.floor(camera.position.x), Math.floor(camera.position.y), Math.floor(camera.position.z)) !== WATER;
 
   const hs = Math.hypot(vel.x, vel.z), moving = Math.min(1, hs / 4);
-  walkPhase += hs * dt * 1.7; swing = Math.max(0, swing - dt * 3.2);
+  walkPhase += hs * dt * 1.7; swing = Math.max(0, swing - dt * 3.2); swingL = Math.max(0, swingL - dt * 3.2);
   const sw = Math.sin((1 - swing) * Math.PI) * (swing > 0 ? 1 : 0);
   if (armPivot) {
     armPivot.rotation.x = 0.45 - sw * 0.95 + Math.sin(walkPhase * 1.2) * 0.04 * moving;
     armPivot.position.set(0.36 + Math.sin(walkPhase) * 0.012 * moving, -0.36 + Math.abs(Math.cos(walkPhase)) * 0.02 * moving - sw * 0.06, -0.42 - sw * 0.08);
+  }
+  if (armPivotL) {
+    const swL = Math.sin((1 - swingL) * Math.PI) * (swingL > 0 ? 1 : 0);
+    armPivotL.rotation.x = 0.45 - swL * 0.95 + Math.sin(walkPhase * 1.2 + 1.6) * 0.04 * moving;
+    armPivotL.position.set(-0.36 - Math.sin(walkPhase) * 0.012 * moving, -0.36 + Math.abs(Math.cos(walkPhase + 1)) * 0.02 * moving - swL * 0.06, -0.42 - swL * 0.08);
   }
   if (model && viewMode === 1) {
     model.g.position.copy(pos); model.g.rotation.y = yaw + Math.PI;
@@ -2564,7 +2688,7 @@ function update(dt) {
   pushPresence(dt);
 }
 function updateAlways(dt) {
-  updateParts(dt); updateAnimals(dt); updateZombies(dt); updateDrops(dt); updateSparks(dt); updateFireworks(dt); updateChests(dt, clock); updateRemotes(dt, clock);
+  updateParts(dt); updateArrows(dt); updateAnimals(dt); updateZombies(dt); updateDrops(dt); updateSparks(dt); updateFireworks(dt); updateShow(dt); updateChests(dt, clock); updateRemotes(dt, clock);
 }
 
 /* ---------- boot ---------- */
@@ -2603,7 +2727,7 @@ function frame(now) {
   updateSky();
   renderer.render(scene, camera);
 }
-if (window.BLOCKYARD_TEST) window.__bk = { animals: () => animals, startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+if (window.BLOCKYARD_TEST) window.__bk = { show: () => startShow(true), shells: () => shells.length, arrows: () => arrows.length, hands: () => [weapon, weaponL], setHand, animals: () => animals, startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
 let lastTapEnd = 0;
