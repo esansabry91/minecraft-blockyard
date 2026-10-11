@@ -309,7 +309,7 @@ body.touch .keys.t { display: grid; }
 
 <div id="overlay">
   <div class="panel">
-    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 21 &middot; one hand view</div>
+    <h1>Blockyard</h1><div style="font-size:12px;opacity:.7;margin:-6px 0 6px">Version 22 &middot; airplanes</div>
     <p>Build anything. Dig anything. Find treasure, pick flowers and play with friends.</p>
     <h2>CHOOSE A MAP</h2>
     <div id="maps">
@@ -2159,6 +2159,70 @@ function updateRemotes(dt, time) {
     if (r.trail && (sp3 > 0.5 || r.fly)) trailAt(r.x, r.y, r.z, time);
   }
 }
+
+/* ---------- airplanes with name banners (one per player) ---------- */
+const planes = new Map();
+const nameSeed = n => { let h = 7; for (const ch of String(n)) h = (Math.imul(h, 31) + ch.codePointAt(0)) | 0; return (h >>> 0); };
+function makeBannerTex(name, hue, flip) {
+  const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+  const g = cv.getContext('2d');
+  g.fillStyle = 'hsl(' + hue + ',85%,88%)'; g.fillRect(0, 0, 512, 128);
+  g.strokeStyle = 'hsl(' + hue + ',75%,45%)'; g.lineWidth = 10; g.strokeRect(5, 5, 502, 118);
+  g.fillStyle = '#2a1a3a'; let fs = 74; g.font = '800 ' + fs + 'px Nunito, system-ui, sans-serif';
+  while (g.measureText(name).width > 450 && fs > 28) { fs -= 4; g.font = '800 ' + fs + 'px Nunito, system-ui, sans-serif'; }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(name, 256, 68);
+  const t = new THREE.CanvasTexture(cv);
+  if (flip) { t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1; }
+  return t;
+}
+function buildPlane(name) {
+  const sd = nameSeed(name), hue = sd % 360;
+  const body = new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(hue / 360, 0.75, 0.55) });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff }), glass = new THREE.MeshBasicMaterial({ color: 0x9fe3ff }), dark = new THREE.MeshBasicMaterial({ color: 0x33343c }), yel = new THREE.MeshBasicMaterial({ color: 0xffd23f });
+  const g = new THREE.Group(), body3 = new THREE.Group(); g.add(body3);
+  body3.add(mk(0.9, 0.9, 3.6, body, 0, 0, 0), mk(0.7, 0.7, 0.5, yel, 0, 0, 2.05), mk(0.55, 0.45, 1.0, glass, 0, 0.62, 0.5), mk(0.8, 0.8, 0.8, body, 0, 0.1, -2.1), mk(0.4, 0.4, 0.6, body, 0, 0.2, -2.6));
+  body3.add(mk(7.2, 0.14, 1.3, white, 0, 0.1, 0.2), mk(7.2, 0.15, 0.3, body, 0, 0.1, -0.5), mk(2.6, 0.12, 0.7, white, 0, 0.25, -2.6), mk(0.12, 1.0, 0.8, body, 0, 0.75, -2.55));
+  body3.add(mk(0.4, 0.4, 0.4, dark, -1.6, -0.35, 0.5), mk(0.4, 0.4, 0.4, dark, 1.6, -0.35, 0.5), mk(0.1, 0.4, 0.1, dark, -0.0, -0.55, 1.0));
+  const prop = new THREE.Group(); prop.position.set(0, 0, 2.4); prop.add(mk(0.2, 1.8, 0.08, dark, 0, 0, 0), mk(1.8, 0.2, 0.08, dark, 0, 0, 0.01), mk(0.22, 0.22, 0.22, yel, 0, 0, 0.05)); body3.add(prop);
+  // rope + banner (trails behind the tail, toward -z)
+  const rope = mk(0.04, 0.04, 3.2, dark, 0, 0.1, -4.1); body3.add(rope);
+  const bg = new THREE.PlaneGeometry(10, 2.4, 14, 1); bg.rotateY(Math.PI / 2); bg.translate(0, 0, -5.6 - 5);
+  const base = bg.attributes.position.array.slice();
+  const tf = makeBannerTex(name, hue, false), tb = makeBannerTex(name, hue, true);
+  const front = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: tf, side: THREE.FrontSide, fog: false }));
+  const back = new THREE.Mesh(bg, new THREE.MeshBasicMaterial({ map: tb, side: THREE.BackSide, fog: false }));
+  body3.add(front, back);
+  g.scale.setScalar(1.7);
+  return { g, body3, prop, bg, base, name, hue, tex: [tf, tb], mats: [front.material, back.material] };
+}
+function disposePlane(pl) {
+  scene.remove(pl.g); pl.g.traverse(c => { if (c.geometry) c.geometry.dispose(); }); pl.tex.forEach(t => t.dispose()); pl.mats.forEach(m => m.dispose());
+}
+function planeFor(key, name) {
+  let pl = planes.get(key);
+  if (pl && pl.name !== name) { disposePlane(pl); planes.delete(key); pl = null; }
+  if (!pl) { pl = buildPlane(name); scene.add(pl.g); planes.set(key, pl); }
+  return pl;
+}
+function updatePlanes(dt) {
+  const want = new Map(); want.set('me', myName);
+  for (const [k, r] of remotes) if (r.root && !r.gone && r.name) want.set(k, r.name);
+  for (const [k, pl] of planes) if (!want.has(k)) { disposePlane(pl); planes.delete(k); }
+  const T = Date.now() / 1000;
+  for (const [k, name] of want) {
+    const pl = planeFor(k, name), sd = nameSeed(name);
+    const R = 34 + (sd % 4) * 9, alt = 46 + ((sd >> 3) % 4) * 4, sp = 10 + ((sd >> 5) % 3) * 1.5, om = sp / R, ph = (sd % 628) / 100;
+    const a = ph + T * om, cx = W / 2, cz = D / 2;
+    const x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R * 0.85, y = alt + Math.sin(T * 0.6 + ph) * 1.2;
+    const vx = -Math.sin(a) * R, vz = Math.cos(a) * R * 0.85;
+    pl.g.position.set(x, y, z); pl.g.rotation.y = Math.atan2(vx, vz);
+    pl.body3.rotation.z = -0.28 + Math.sin(T * 0.9 + ph) * 0.04; pl.body3.rotation.x = Math.sin(T * 1.3 + ph) * 0.03;
+    pl.prop.rotation.z += dt * 40;
+    const pa = pl.bg.attributes.position.array, b = pl.base;
+    for (let i = 0; i < pa.length; i += 3) { const d = Math.min(1, (-5.6 - b[i + 2]) / 10); pa[i] = b[i] + Math.sin(T * 5 - b[i + 2] * 0.9) * 0.55 * d; pa[i + 1] = b[i + 1] + Math.sin(T * 3 - b[i + 2] * 0.5) * 0.12 * d; }
+    pl.bg.attributes.position.needsUpdate = true;
+  }
+}
 let presenceSent = '', presenceTimer = 0;
 function pushPresence(dt) {
   if (!net) return;
@@ -2689,7 +2753,7 @@ function update(dt) {
   pushPresence(dt);
 }
 function updateAlways(dt) {
-  updateParts(dt); updateArrows(dt); updateAnimals(dt); updateZombies(dt); updateDrops(dt); updateSparks(dt); updateFireworks(dt); updateShow(dt); updateChests(dt, clock); updateRemotes(dt, clock);
+  updateParts(dt); updateArrows(dt); updateAnimals(dt); updateZombies(dt); updateDrops(dt); updateSparks(dt); updateFireworks(dt); updateShow(dt); updateChests(dt, clock); updateRemotes(dt, clock); updatePlanes(dt);
 }
 
 /* ---------- boot ---------- */
@@ -2728,7 +2792,7 @@ function frame(now) {
   updateSky();
   renderer.render(scene, camera);
 }
-if (window.BLOCKYARD_TEST) window.__bk = { show: () => startShow(true), shells: () => shells.length, arrows: () => arrows.length, hands: () => [weapon, weaponL], setHand, animals: () => animals, startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
+if (window.BLOCKYARD_TEST) window.__bk = { planes: () => planes, show: () => startShow(true), shells: () => shells.length, arrows: () => arrows.length, hands: () => [weapon, weaponL], setHand, animals: () => animals, startMon: () => startMonsterCountdown(), spawnDino: () => { const p = pos; for (let i = 0; i < 5; i++) { const x = p.x + 14 + (i % 3) * 5, z = p.z + (i - 2) * 5; addZombie(x, surfaceY(Math.floor(x), Math.floor(z)), z, undefined, 'dino', i); } }, zombies: () => zombies, setTod: v => { tod = v; }, daylight: () => daylight, hit: () => zombieHit(), setYaw: (y, p) => { yaw = y; pitch = p || 0; }, get, setBlock, idx, pos, hunt: () => hunt, net: () => net };
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
 document.addEventListener('touchmove', e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
 let lastTapEnd = 0;
