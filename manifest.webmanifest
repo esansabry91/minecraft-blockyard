@@ -1,6 +1,6 @@
 {
- "name": "Blockyard",
- "short_name": "Blockyard",
+ "name": "Game Box",
+ "short_name": "Game Box",
  "start_url": "./index.html",
  "display": "fullscreen",
  "orientation": "landscape",
