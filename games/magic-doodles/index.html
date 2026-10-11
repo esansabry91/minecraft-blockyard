@@ -71,21 +71,26 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 #hudTop { position: absolute; top: max(10px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); display: flex; gap: 10px; align-items: center; pointer-events: none; }
 #hudTop > * { pointer-events: auto; }
 .bigChip { padding: 12px 16px; font: 800 16px var(--font-body); background: var(--accent); color: var(--accent-ink); border: 4px solid var(--line); border-radius: 12px; }
-#tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 112px; transition: opacity .6s; background: rgba(42,33,24,.85); border: 3px solid var(--line); border-radius: 10px; padding: 8px 14px; font-weight: 800; font-size: 15px; text-align: center; max-width: 90vw; pointer-events: none; }
+#tip { position: absolute; left: 50%; transform: translateX(-50%); bottom: 90px; transition: opacity .6s; background: rgba(42,33,24,.85); border: 3px solid var(--line); border-radius: 10px; padding: 8px 14px; font-weight: 800; font-size: 15px; text-align: center; max-width: 90vw; pointer-events: none; }
 #strip { position: absolute; left: 0; right: 0; bottom: max(10px, env(safe-area-inset-bottom)); display: flex; gap: 8px; overflow-x: auto; padding: 0 12px; justify-content: safe center; }
-.thumb { position: relative; flex: 0 0 auto; width: 84px; height: 84px; background: rgba(255,255,255,.92); border: 4px solid var(--line); border-radius: 10px; padding: 4px; }
+.thumb { position: relative; flex: 0 0 auto; width: 60px; height: 60px; background: rgba(255,255,255,.9); border: 3px solid var(--line); border-radius: 10px; padding: 3px; }
 .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
-.thumb.on { border-color: var(--accent); }
-.thumb .x { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--line); background: #e53935; color: #fff; font: 800 13px/1 var(--font-body); padding: 0; display: grid; place-items: center; }
+.thumb.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent); }
 /* Island buttons, the picked-doodle panel, dress-up sheet, play mode */
 #hudTop .spacer { flex: 1; }
 #worldBtns, .selBtns { display: flex; gap: 6px; }
 .wb { min-width: 62px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(42,33,24,.92); border: 3px solid var(--line); border-radius: 12px; font: 800 12px/1 var(--font-body); color: var(--ink); padding: 4px 8px; }
 .wb .ic { font-size: 22px; line-height: 1; }
 .wb.on, .wb.accent { background: var(--accent); color: var(--accent-ink); }
-#selPanel { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 100px); display: flex; align-items: center; gap: 10px; background: var(--panel); border: 4px solid var(--line); border-radius: 14px; padding: 8px 12px; max-width: calc(100vw - 24px); }
-#selImg { width: 52px; height: 52px; object-fit: contain; background: #fff; border-radius: 8px; flex-shrink: 0; }
-#selName { font-weight: 800; font-size: 16px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#selPanel { position: absolute; left: max(12px, env(safe-area-inset-left)); top: calc(max(10px, env(safe-area-inset-top)) + 76px); width: 86px; max-height: calc(100vh - 190px); overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; background: rgba(42,33,24,.85); border: 3px solid var(--line); border-radius: 14px; }
+.selHead { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+#selName { flex: 1; min-width: 0; font-weight: 800; font-size: 12px; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#selClose { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: #e53935; color: #fff; border: 2px solid var(--line); font: 800 12px/1 var(--font-body); padding: 0; }
+.sb { height: 52px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; background: var(--panel-2); border: 3px solid var(--line); border-radius: 10px; font: 800 11px/1 var(--font-body); color: var(--ink); padding: 2px; }
+.sb .ic { font-size: 20px; line-height: 1; }
+.sb.on, .sb.accent { background: var(--accent); color: var(--accent-ink); }
+.sb.on { animation: recPulse 0.8s infinite alternate; }
+@keyframes recPulse { from { box-shadow: 0 0 0 0 rgba(229,57,53,.9); } to { box-shadow: 0 0 0 6px rgba(229,57,53,0); } }
 .selX { position: absolute; top: -14px; right: -14px; width: 34px; height: 34px; border-radius: 50%; background: #e53935; color: #fff; border: 3px solid var(--line); font: 800 15px/1 var(--font-body); padding: 0; }
 .sheet { position: fixed; inset: 0; z-index: 6; background: rgba(0,0,0,.5); display: grid; place-items: center; padding: 16px; }
 .sheetBox { position: relative; background: var(--panel); border: 4px solid var(--line); border-radius: 14px; padding: 18px; width: min(540px, 100%); max-height: 90vh; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
@@ -107,7 +112,8 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   #hudTop { flex-wrap: wrap; }
   #drawBtn { padding: 10px 12px; }
   .wb { min-width: 54px; height: 56px; padding: 3px 5px; font-size: 11px; }
-  #selPanel { flex-wrap: wrap; justify-content: center; width: calc(100vw - 24px); }
+  #selPanel { width: 76px; top: calc(max(10px, env(safe-area-inset-top)) + 120px); }
+  .sb { height: 48px; }
   #playTip { display: none; }
   #score { left: max(12px, env(safe-area-inset-left)); transform: none; font-size: 12px; padding: 9px 10px; }
   #stick { width: 130px; height: 130px; }
@@ -209,15 +215,12 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
   </div>
   <div id="tip">Tap a doodle to pick it. Tap the grass to make it walk there!</div>
   <div id="selPanel" hidden>
-    <img id="selImg" alt="">
-    <div id="selName"></div>
-    <div class="selBtns">
-      <button class="wb" id="nameBtn" type="button"><span class="ic">&#9999;&#65039;</span>Name</button>
-      <button class="wb" id="voiceBtn" type="button"><span class="ic">&#127908;</span>Voice</button>
-      <button class="wb" id="dressBtn" type="button"><span class="ic">&#127913;</span>Dress up</button>
-      <button class="wb accent" id="playBtn" type="button"><span class="ic">&#128377;&#65039;</span>Play as me</button>
-    </div>
-    <button class="selX" id="selClose" type="button" aria-label="Close">&#10005;</button>
+    <div class="selHead"><div id="selName"></div><button id="selClose" type="button" aria-label="Close">&#10005;</button></div>
+    <button class="sb accent" id="playBtn" type="button"><span class="ic">&#128377;&#65039;</span>Play</button>
+    <button class="sb" id="nameBtn" type="button"><span class="ic">&#9999;&#65039;</span>Name</button>
+    <button class="sb" id="voiceBtn" type="button"><span class="ic">&#127908;</span>Voice</button>
+    <button class="sb" id="dressBtn" type="button"><span class="ic">&#127913;</span>Dress up</button>
+    <button class="sb" id="removeBtn" type="button"><span class="ic">&#128465;&#65039;</span>Remove</button>
   </div>
   <div id="strip"></div>
 </div>
@@ -768,8 +771,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 const scene = new THREE.Scene();
 const DAY_SKY = new THREE.Color(0x9fdcff), NIGHT_SKY = new THREE.Color(0x0d1433), STORM_SKY = new THREE.Color(0x7d8b99), PARTY_SKY = new THREE.Color(0x2a1048);
 scene.background = DAY_SKY.clone();
-scene.fog = new THREE.Fog(0x9fdcff, 45, 110);
-const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 300);
+scene.fog = new THREE.Fog(0x9fdcff, 70, 170);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 400);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x6a8a4a, 0.8); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(8, 16, 10); scene.add(sun);
 function resize() {
@@ -778,28 +781,44 @@ function resize() {
 }
 window.addEventListener('resize', resize); resize();
 
-const ISLAND_R = 13;
+const ISLAND_R = 24;
 const M = c => new THREE.MeshLambertMaterial({ color: c });
 const GRASS = new THREE.Color(0x5fb43f), SNOW_WHITE = new THREE.Color(0xf4f8ff);
+const POND = new THREE.Vector3(-11, 0, -9), POND_R = 3.4;
 const grassMat = M(0x5fb43f), leafMats = [];
 (function buildIsland() {
   const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-  const water = new THREE.Mesh(new THREE.CircleGeometry(160, 48).rotateX(-Math.PI / 2), M(0x4fc3f7));
+  const water = new THREE.Mesh(new THREE.CircleGeometry(220, 48).rotateX(-Math.PI / 2), M(0x4fc3f7));
   water.position.y = -0.9; scene.add(water);
-  const dirt = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R - 0.4, ISLAND_R - 2.4, 2.2, 40), M(0x8d6e4b));
+  const dirt = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R - 0.4, ISLAND_R - 2.4, 2.2, 64), M(0x8d6e4b));
   dirt.position.y = -1.15; scene.add(dirt);
-  const grass = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R - 0.3, 0.3, 48), grassMat);
+  const grass = new THREE.Mesh(new THREE.CylinderGeometry(ISLAND_R, ISLAND_R - 0.3, 0.3, 72), grassMat);
   grass.position.y = -0.15; scene.add(grass);
-  for (let k = 0; k < 9; k++) { // trees around the edge
-    const a = k / 9 * Math.PI * 2 + rnd() * 0.4, r = ISLAND_R - 1.3;
+  const treeSpots = [];
+  for (let k = 0; k < 22; k++) { const a = k / 22 * Math.PI * 2 + rnd() * 0.25; treeSpots.push([a, ISLAND_R - 1.4 - rnd() * 0.8]); } // around the edge
+  for (let k = 0; k < 7; k++) { // little groves inside
+    const a = k / 7 * Math.PI * 2 + 0.4, r = 15 + rnd() * 3;
+    for (let t = 0; t < 3; t++) treeSpots.push([a + (rnd() - 0.5) * 0.25, r + (rnd() - 0.5) * 2.5]);
+  }
+  for (const [a, r] of treeSpots) {
     const g = new THREE.Group(); g.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    if (g.position.distanceTo(POND) < POND_R + 2) continue;
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.3, 1.4, 7), M(0x8d5a2b)); trunk.position.y = 0.7; g.add(trunk);
     const leafMat = M(new THREE.Color().setHSL(0.27 + rnd() * 0.08, 0.55, 0.42)); leafMat.userData.base = leafMat.color.clone(); leafMats.push(leafMat);
     const top = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), leafMat); top.position.y = 2.0; g.add(top);
     g.scale.setScalar(0.8 + rnd() * 0.5); scene.add(g);
   }
+  // a pond with a sandy edge, and a few rocks
+  const sand = new THREE.Mesh(new THREE.CircleGeometry(POND_R + 0.8, 40).rotateX(-Math.PI / 2), M(0xe8d39a)); sand.position.set(POND.x, 0.015, POND.z); scene.add(sand);
+  const pond = new THREE.Mesh(new THREE.CircleGeometry(POND_R, 40).rotateX(-Math.PI / 2), M(0x3fb7ea)); pond.position.set(POND.x, 0.03, POND.z); scene.add(pond);
+  for (let k = 0; k < 4; k++) { const lily = new THREE.Mesh(new THREE.CircleGeometry(0.4, 12).rotateX(-Math.PI / 2), M(0x4caf50)); const a = rnd() * 6.28, r = rnd() * (POND_R - 0.8); lily.position.set(POND.x + Math.cos(a) * r, 0.05, POND.z + Math.sin(a) * r); scene.add(lily); }
+  for (let k = 0; k < 10; k++) {
+    const a = rnd() * Math.PI * 2, r = 10 + rnd() * (ISLAND_R - 13);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.5 + rnd() * 0.6), M(0x9e9e9e)); rock.position.set(Math.cos(a) * r, 0.2, Math.sin(a) * r); rock.rotation.set(rnd() * 3, rnd() * 3, 0); rock.scale.y = 0.6;
+    if (rock.position.distanceTo(POND) > POND_R + 1.5) scene.add(rock);
+  }
   const flowerCols = [0xff5c8a, 0xffd23f, 0xffffff, 0xb388ff, 0xff8a3d];
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 140; k++) {
     const a = rnd() * Math.PI * 2, r = 2 + rnd() * (ISLAND_R - 3.5);
     const f = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), M(flowerCols[k % flowerCols.length]));
     f.position.set(Math.cos(a) * r, 0.08, Math.sin(a) * r); scene.add(f);
@@ -807,14 +826,14 @@ const grassMat = M(0x5fb43f), leafMats = [];
   for (let k = 0; k < 7; k++) { // clouds
     const c = new THREE.Group();
     for (let p = 0; p < 4; p++) { const b = new THREE.Mesh(new THREE.SphereGeometry(1.4 + rnd(), 10, 8), M(0xffffff)); b.position.set(p * 1.4 - 2, rnd() * 0.6, rnd() - 0.5); c.add(b); }
-    const a = rnd() * Math.PI * 2; c.position.set(Math.cos(a) * (32 + rnd() * 20), 12 + rnd() * 8, Math.sin(a) * (32 + rnd() * 20));
+    const a = rnd() * Math.PI * 2; c.position.set(Math.cos(a) * (50 + rnd() * 25), 16 + rnd() * 8, Math.sin(a) * (50 + rnd() * 25));
     scene.add(c);
   }
 })();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 // trampolines: anyone who walks onto one goes boing
-const TRAMPOLINES = [new THREE.Vector3(5.5, 0, -3.5), new THREE.Vector3(-5, 0, 4)];
+const TRAMPOLINES = [new THREE.Vector3(7, 0, -5), new THREE.Vector3(-7, 0, 6), new THREE.Vector3(4, 0, 11)];
 for (const [k, p] of TRAMPOLINES.entries()) {
   const g = new THREE.Group(); g.position.copy(p);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.2, 0.3, 24), M(0x1e3a8a)); base.position.y = 0.15; g.add(base);
@@ -927,9 +946,9 @@ function positionTag(d) { if (d.tag) d.tag.position.y = d.mesh.position.y + d.sh
 
 function freeSpot() {
   for (let tries = 0; tries < 40; tries++) {
-    const a = Math.random() * Math.PI * 2, r = Math.random() * (ISLAND_R - 4);
+    const a = Math.random() * Math.PI * 2, r = Math.random() * 12;
     const p = new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
-    if (doodles.every(o => o.pos.distanceTo(p) > 2.6) && !onTrampoline(p)) return p;
+    if (doodles.every(o => o.pos.distanceTo(p) > 2.6) && !onTrampoline(p) && p.distanceTo(POND) > POND_R + 1) return p;
   }
   return new THREE.Vector3((Math.random() - 0.5) * 8, 0, (Math.random() - 0.5) * 8);
 }
@@ -1119,11 +1138,11 @@ const moon = new THREE.Mesh(new THREE.SphereGeometry(5, 20, 16), new THREE.MeshB
 moon.position.set(-50, 55, -70); scene.add(moon);
 const RAIN_N = 700, rainPos = new Float32Array(RAIN_N * 6);
 const rain = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(rainPos, 3)), new THREE.LineBasicMaterial({ color: 0xbcd8ff, transparent: true, opacity: 0 }));
-const rainDrops = Array.from({ length: RAIN_N }, () => ({ x: (Math.random() - 0.5) * 36, y: Math.random() * 22, z: (Math.random() - 0.5) * 36 }));
+const rainDrops = Array.from({ length: RAIN_N }, () => ({ x: (Math.random() - 0.5) * 60, y: Math.random() * 22, z: (Math.random() - 0.5) * 60 }));
 rain.frustumCulled = false; scene.add(rain);
 const SNOW_N = 900, snowPos = new Float32Array(SNOW_N * 3);
 const snow = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(snowPos, 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.2, transparent: true, opacity: 0 }));
-const snowFlakes = Array.from({ length: SNOW_N }, () => ({ x: (Math.random() - 0.5) * 36, y: Math.random() * 20, z: (Math.random() - 0.5) * 36, s: Math.random() * 6 }));
+const snowFlakes = Array.from({ length: SNOW_N }, () => ({ x: (Math.random() - 0.5) * 60, y: Math.random() * 20, z: (Math.random() - 0.5) * 60, s: Math.random() * 6 }));
 snow.frustumCulled = false; scene.add(snow);
 const rainbow = new THREE.Group();
 ['#e53935', '#ff9800', '#fdd835', '#43a047', '#1e88e5', '#3949ab', '#8e24aa'].forEach((c, i) => {
@@ -1177,7 +1196,7 @@ function updateEnv(dt) {
   rain.material.opacity = env.rain01 * 0.7; rain.visible = env.rain01 > 0.01;
   if (rain.visible) {
     for (let i = 0; i < RAIN_N; i++) {
-      const r = rainDrops[i]; r.y -= dt * 26; if (r.y < 0) { r.y += 22; r.x = (Math.random() - 0.5) * 36; r.z = (Math.random() - 0.5) * 36; }
+      const r = rainDrops[i]; r.y -= dt * 26; if (r.y < 0) { r.y += 22; r.x = (Math.random() - 0.5) * 60; r.z = (Math.random() - 0.5) * 60; }
       rainPos.set([c.x + r.x, r.y, c.z + r.z, c.x + r.x + 0.05, r.y + 0.7, c.z + r.z], i * 6);
     }
     rain.geometry.attributes.position.needsUpdate = true;
@@ -1185,7 +1204,7 @@ function updateEnv(dt) {
   snow.material.opacity = env.snow01; snow.visible = env.snow01 > 0.01;
   if (snow.visible) {
     for (let i = 0; i < SNOW_N; i++) {
-      const f = snowFlakes[i]; f.y -= dt * 2.2; f.s += dt; if (f.y < 0) { f.y += 20; f.x = (Math.random() - 0.5) * 36; f.z = (Math.random() - 0.5) * 36; }
+      const f = snowFlakes[i]; f.y -= dt * 2.2; f.s += dt; if (f.y < 0) { f.y += 20; f.x = (Math.random() - 0.5) * 60; f.z = (Math.random() - 0.5) * 60; }
       snowPos.set([c.x + f.x + Math.sin(f.s) * 0.6, f.y, c.z + f.z + Math.cos(f.s * 0.8) * 0.6], i * 3);
     }
     snow.geometry.attributes.position.needsUpdate = true;
@@ -1260,45 +1279,90 @@ function updatePartyLights(dt) {
 }
 
 // ---------- Voices ----------
-const Voice = { rec: null, stream: null, timer: 0, who: null };
+const Voice = { rec: null, stream: null, timer: 0, tick: 0, left: 0, who: null };
+// iPhones and iPads play quietly through the earpiece after the microphone was used unless told otherwise
+function setAudioSession(type) { try { if (navigator.audioSession) navigator.audioSession.type = type; } catch (e) { } }
+function decodeAudio(ab) {
+  if (!Sound.ctx) Sound.init();
+  if (!Sound.ctx) return Promise.reject(new Error('no audio'));
+  return new Promise((res, rej) => { const p = Sound.ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+}
+// cut the quiet bits off both ends and turn it up, so a small voice is easy to hear
+function tidyVoice(buf) {
+  const ch = buf.getChannelData(0); let peak = 0;
+  for (let i = 0; i < ch.length; i++) { const v = Math.abs(ch[i]); if (v > peak) peak = v; }
+  if (peak < 0.015) return null;
+  const th = peak * 0.08; let a = 0, b = ch.length - 1;
+  while (a < b && Math.abs(ch[a]) < th) a++;
+  while (b > a && Math.abs(ch[b]) < th) b--;
+  const pad = Math.floor(buf.sampleRate * 0.05);
+  a = Math.max(0, a - pad); b = Math.min(ch.length - 1, b + pad);
+  const out = Sound.ctx.createBuffer(1, b - a + 1, buf.sampleRate), o = out.getChannelData(0), gain = Math.min(12, 0.9 / peak);
+  for (let i = a; i <= b; i++) o[i - a] = ch[i] * gain;
+  return out;
+}
+async function voiceBuffer(d) {
+  if (d.voiceBuf && d.voiceBufFor === d.entry.voice) return d.voiceBuf;
+  const ab = await (await fetch(d.entry.voice)).arrayBuffer();
+  const buf = tidyVoice(await decodeAudio(ab)) || await decodeAudio(await (await fetch(d.entry.voice)).arrayBuffer());
+  d.voiceBuf = buf; d.voiceBufFor = d.entry.voice;
+  return buf;
+}
 function playVoice(d) {
   if (!d || !d.entry.voice) return false;
-  try {
-    if (!d.audio) d.audio = new Audio(d.entry.voice);
-    d.audio.currentTime = 0; d.audio.play().catch(() => {});
-    return true;
-  } catch (e) { return false; }
+  Sound.init(); setAudioSession('playback');
+  const fallback = () => { try { if (!d.audio) d.audio = new Audio(d.entry.voice); d.audio.currentTime = 0; d.audio.volume = 1; d.audio.play().catch(() => {}); } catch (e) { } };
+  if (!Sound.ctx) { fallback(); return true; }
+  if (Sound.ctx.state === 'suspended') Sound.ctx.resume();
+  voiceBuffer(d).then(buf => {
+    const src = Sound.ctx.createBufferSource(); src.buffer = buf;
+    src.connect(Sound.ctx.destination); src.start();
+  }).catch(fallback);
+  return true;
 }
+function stopRecording() { if (Voice.rec && Voice.rec.state === 'recording') Voice.rec.stop(); }
 async function toggleRecord() {
-  if (Voice.rec) { Voice.rec.stop(); return; }
+  if (Voice.rec) { stopRecording(); return; }
   const d = selected; if (!d) return;
+  Sound.init();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { toast('This device can\'t record sounds here, sorry!', 3000); return; }
-  try { Voice.stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-  catch (e) { toast('Please allow the microphone so your doodle can talk!', 3200); return; }
-  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+  setAudioSession('play-and-record');
+  try { Voice.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { setAudioSession('playback'); toast('Please allow the microphone so your doodle can talk!', 3200); return; }
+  const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
   let rec;
-  try { rec = new MediaRecorder(Voice.stream, type ? { mimeType: type, audioBitsPerSecond: 32000 } : undefined); }
+  try { rec = new MediaRecorder(Voice.stream, type ? { mimeType: type } : undefined); }
   catch (e) { rec = new MediaRecorder(Voice.stream); }
   const chunks = [];
-  Voice.rec = rec; Voice.who = d;
+  Voice.rec = rec; Voice.who = d; Voice.left = 4;
   rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-  rec.onstop = () => {
-    clearTimeout(Voice.timer);
+  rec.onstop = async () => {
+    clearTimeout(Voice.timer); clearInterval(Voice.tick);
     Voice.stream.getTracks().forEach(t => t.stop());
+    setAudioSession('playback');
     const who = Voice.who; Voice.rec = null; Voice.who = null; renderSel();
     const blob = new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' });
-    if (!blob.size || !who) return;
+    if (!blob.size || !who) { toast('That didn\'t record. Try again!', 2600); return; }
+    // make sure there is something to hear before keeping it
+    if (Sound.ctx) {
+      try {
+        const buf = await decodeAudio(await blob.arrayBuffer());
+        if (!tidyVoice(buf)) { toast('I couldn\'t hear anything. Hold the device closer and talk loud!', 3400); return; }
+      } catch (e) { /* this browser can't check it; keep it anyway */ }
+    }
     const fr = new FileReader();
     fr.onload = () => {
-      if (!updateEntry(who, { voice: fr.result })) { toast('No room left to save the voice. Take an old doodle off the island first.', 3600); return; }
-      who.audio = null; playVoice(who);
+      if (!updateEntry(who, { voice: fr.result })) { toast('No room left to save the voice. Remove an old doodle first.', 3600); return; }
+      who.audio = null; who.voiceBuf = null;
+      setTimeout(() => playVoice(who), 150);
       toast('Got it! Tap ' + (who.entry.name || 'your doodle') + ' to hear it.', 2600);
     };
     fr.readAsDataURL(blob);
   };
   rec.start();
-  Voice.timer = setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, 3000);
-  toast('Say something now! 🎤', 2400);
+  Voice.timer = setTimeout(stopRecording, 4000);
+  Voice.tick = setInterval(() => { Voice.left = Math.max(0, Voice.left - 1); renderSel(); }, 1000);
+  toast('Talk now! 🎤 Tap Stop when you\'re done.', 2400);
   renderSel();
 }
 
@@ -1310,18 +1374,18 @@ const starMat = new THREE.MeshLambertMaterial({ color: 0xffd23f, emissive: 0x8a6
 function spawnCollectibles() {
   clearCollectibles();
   const used = TRAMPOLINES.map(t => t.clone());
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 14; i++) {
     let p;
     for (let tries = 0; tries < 50; tries++) {
       const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * (ISLAND_R - 4.5);
       p = new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
-      if (used.every(u => u.distanceTo(p) > 2)) break;
+      if (used.every(u => u.distanceTo(p) > 2) && p.distanceTo(POND) > POND_R + 1) break;
     }
     used.push(p);
     const m = new THREE.Mesh(starGeo, starMat); m.position.set(p.x, 0.9, p.z); scene.add(m);
     drive.items.push({ kind: 's', m, pos: new THREE.Vector3(p.x, 0.9, p.z) });
   }
-  const cols = [0xff4d7d, 0x40c4ff, 0xffd740, 0x69f0ae];
+  const cols = [0xff4d7d, 0x40c4ff, 0xffd740, 0x69f0ae, 0xb388ff, 0xff9100];
   TRAMPOLINES.forEach((t, ti) => [-0.5, 0.5].forEach((o, oi) => {
     const g = new THREE.Group();
     const bal = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 12), new THREE.MeshLambertMaterial({ color: cols[ti * 2 + oi], emissive: 0x222222 })); bal.scale.y = 1.2; g.add(bal);
@@ -1329,7 +1393,7 @@ function spawnCollectibles() {
     const y = 3.7 + oi * 0.3; g.position.set(t.x + o, y, t.z + o * 0.6); scene.add(g);
     drive.items.push({ kind: 'b', m: g, pos: g.position.clone() });
   }));
-  drive.total = { s: 10, b: 4 }; drive.got = { s: 0, b: 0 };
+  drive.total = { s: 14, b: 6 }; drive.got = { s: 0, b: 0 };
   updateScore();
 }
 function clearCollectibles() {
@@ -1353,7 +1417,7 @@ function stopDrive() {
   d.driven = false; d.awakeT = 5; drive.d = null;
   clearCollectibles();
   $('play').hidden = true; $('hud').hidden = false;
-  cam.dist = 17; cam.phi = 1.12;
+  cam.dist = 22; cam.phi = 1.12;
   renderSel();
 }
 function driveStep(d, dt) {
@@ -1422,7 +1486,7 @@ window.addEventListener('blur', () => { drive.keys = {}; });
 })();
 
 // ---------- Camera: drag to turn, pinch or wheel to zoom ----------
-const cam = { theta: 0, phi: 1.12, dist: 17, target: new THREE.Vector3(0, 0.8, 0), focus: null, focusT: 0 };
+const cam = { theta: 0, phi: 1.12, dist: 22, target: new THREE.Vector3(0, 0.8, 0), focus: null, focusT: 0 };
 function placeCamera(dt) {
   if (drive.d) {
     const d = drive.d;
@@ -1449,7 +1513,7 @@ canvas.addEventListener('pointermove', e => {
   if (ptrs.size === 2) {
     p.x = e.clientX; p.y = e.clientY;
     const [a, b] = [...ptrs.values()]; const dd = Math.hypot(a.x - b.x, a.y - b.y);
-    if (pinch0) cam.dist = clamp(cam.dist * pinch0 / dd, 6, 28); pinch0 = dd; return;
+    if (pinch0) cam.dist = clamp(cam.dist * pinch0 / dd, 6, 42); pinch0 = dd; return;
   }
   if (drag) {
     const dx = e.clientX - p.x, dy = e.clientY - p.y;
@@ -1467,7 +1531,7 @@ const ptrUp = e => {
 };
 canvas.addEventListener('pointerup', ptrUp);
 canvas.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); drag = null; pinch0 = 0; });
-canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 6, 28); }, { passive: false });
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 6, 42); }, { passive: false });
 
 const ray = new THREE.Raycaster();
 function tapWorld(x, y) {
@@ -1534,8 +1598,11 @@ function updateDoodles(dt) {
         else {
           d.idleT -= dt;
           if (d.idleT <= 0) {
-            const a = Math.random() * Math.PI * 2, r = Math.random() * (ISLAND_R - 3.5);
-            d.target = new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r);
+            const a = Math.random() * Math.PI * 2, r = 2 + Math.random() * 7;
+            const t = new THREE.Vector3(d.pos.x + Math.cos(a) * r, 0, d.pos.z + Math.sin(a) * r).multiplyScalar(d.pos.length() > 14 ? 0.8 : 1);
+            if (t.length() > ISLAND_R - 3.5) t.setLength(ISLAND_R - 3.5);
+            if (t.distanceTo(POND) < POND_R + 0.8) t.sub(POND).setLength(POND_R + 1.2).add(POND);
+            d.target = t;
           }
         }
       }
@@ -1650,11 +1717,10 @@ function renderSel() {
   const d = selected, panel = $('selPanel');
   if (!d || drive.d || mode !== 'world') { panel.hidden = true; return; }
   panel.hidden = false; hideTip();
-  $('selImg').src = d.entry.img;
-  $('selName').textContent = d.entry.name || (d.kind === 'creature' ? 'Your creature' : 'Your thing');
+  $('selName').textContent = d.entry.name || '';
   $('dressBtn').hidden = $('playBtn').hidden = d.kind !== 'creature';
   const rec = Voice.rec && Voice.who === d;
-  $('voiceBtn').innerHTML = rec ? '<span class="ic">⏹️</span>Stop' : `<span class="ic">🎤</span>${d.entry.voice ? 'New voice' : 'Voice'}`;
+  $('voiceBtn').innerHTML = rec ? `<span class="ic">⏹️</span>Stop ${Voice.left}` : '<span class="ic">🎤</span>Voice';
   $('voiceBtn').classList.toggle('on', !!rec);
 }
 function renderStrip() {
@@ -1663,17 +1729,6 @@ function renderStrip() {
     const b = document.createElement('div'); b.className = 'thumb' + (d === selected ? ' on' : ''); b.dataset.id = d.entry.id;
     b.setAttribute('role', 'button'); b.tabIndex = 0;
     const im = new Image(); im.alt = ''; im.src = d.entry.img; b.appendChild(im);
-    const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.textContent = '✕'; x.setAttribute('aria-label', 'Remove this doodle');
-    x.addEventListener('click', ev => {
-      ev.stopPropagation();
-      if (!confirm('Take this doodle off the island? It will be gone for good.')) return;
-      const carriers = doodles.filter(c => c !== d && Object.values(c.wear).includes(d));
-      removeDoodleObject(d);
-      saveDoodles(loadDoodles().filter(e => e.id !== d.entry.id));
-      carriers.forEach(saveWear);
-      renderStrip();
-    });
-    b.appendChild(x);
     b.addEventListener('click', () => { const t = d.attachedTo || d; cam.focus = t; cam.focusT = 2.5; poke(d.attachedTo ? d.attachedTo : d); });
     strip.appendChild(b);
   }
@@ -1734,6 +1789,15 @@ $('partyBtn').addEventListener('click', () => { hideTip(); toggleParty(); });
 $('nightBtn').addEventListener('click', () => { hideTip(); toggleNight(); });
 $('weatherBtn').addEventListener('click', () => { hideTip(); nextWeather(); });
 $('selClose').addEventListener('click', () => select(null));
+$('removeBtn').addEventListener('click', () => {
+  const d = selected; if (!d) return;
+  if (!confirm('Take this doodle off the island? It will be gone for good.')) return;
+  const carriers = doodles.filter(c => c !== d && Object.values(c.wear).includes(d));
+  removeDoodleObject(d);
+  saveDoodles(loadDoodles().filter(e => e.id !== d.entry.id));
+  carriers.forEach(saveWear);
+  renderStrip();
+});
 $('voiceBtn').addEventListener('click', toggleRecord);
 $('playBtn').addEventListener('click', () => { if (selected) startDrive(selected); });
 $('nameBtn').addEventListener('click', () => {
