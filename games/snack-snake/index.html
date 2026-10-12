@@ -137,7 +137,7 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
       <dt>ZOOM</dt><dd>Hold to go faster</dd>
       <dt>&#127909;</dt><dd>Change the camera</dd>
     </dl>
-    <p class="lead" style="margin-top:14px;font-size:14px">Snacks: &#127822; &#127820; &#127827; &#127826; &#127849; make you longer. &#127823; golden apple +3 &middot; &#9889; lightning zoom &middot; &#11088; rainbow star &middot; &#128030; ladybugs run away, catch them!</p>
+    <p class="lead" style="margin-top:14px;font-size:14px">Snacks: &#127822; &#127820; &#127827; &#127826; &#127849; make you longer. &#127823; golden apple +3 &middot; &#9889; lightning zoom &middot; &#11088; rainbow star &middot; Chase the animals too: &#128048; rabbits hop away (+3), &#128056; frogs leap, &#128045; mice zigzag, &#128036; chicks waddle, &#129419; butterflies flutter and &#128030; ladybugs scurry!</p>
   </div>
 </div>
 
@@ -180,7 +180,7 @@ const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const wrapAngle = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 
 // ---------- Game data ----------
-const ARENA_R = 36;
+const ARENA_R = 52;
 const PATH_STEP = 0.12, SEG_GAP = 0.62, MAX_SEGS = 420, START_LEN = 4;
 const SKINS = [
   { id: 'green', name: 'Gecko Green', colors: ['#43a047', '#7cb342'], head: '#43a047' },
@@ -205,7 +205,13 @@ const FOODS = {
   golden:     { grow: 3, w: 4, color: 0xffd54f },
   lightning:  { grow: 1, w: 4, color: 0xffeb3b, power: 'zoom' },
   star:       { grow: 1, w: 3, color: 0xffeb3b, power: 'rainbow' },
-  ladybug:    { grow: 2, w: 6, color: 0xe53935, runs: true },
+  // live animals: each one moves in its own way
+  ladybug:    { grow: 2, w: 5, color: 0xe53935, move: 'scurry', baseY: 0.35 },
+  rabbit:     { grow: 3, w: 9, color: 0xffffff, move: 'hop', baseY: 0 },
+  frog:       { grow: 2, w: 9, color: 0x66bb6a, move: 'leap', baseY: 0 },
+  mouse:      { grow: 2, w: 6, color: 0x9e9e9e, move: 'zigzag', baseY: 0 },
+  chick:      { grow: 1, w: 7, color: 0xffeb3b, move: 'waddle', baseY: 0 },
+  butterfly:  { grow: 2, w: 6, color: 0xba68c8, move: 'flutter', baseY: 1.0 },
 };
 let sel = {
   mode: store.get('snack-mode', 'relaxed'),
@@ -263,7 +269,7 @@ function buildWorld(def) {
   if (world) { scene.remove(world); disposeGroup(world); }
   world = new THREE.Group(); scene.add(world);
   scene.background = new THREE.Color(def.sky);
-  scene.fog = new THREE.Fog(def.sky, 50, 140);
+  scene.fog = new THREE.Fog(def.sky, 70, 200);
   let seed = def.id.length * 101 + 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   // a checker floor makes it easy to feel how fast you go
   const tex = canvasTex(128, 128, (x) => { x.fillStyle = def.g1; x.fillRect(0, 0, 128, 128); x.fillStyle = def.g2; x.fillRect(0, 0, 64, 64); x.fillRect(64, 64, 64, 64); });
@@ -273,7 +279,7 @@ function buildWorld(def) {
   const outside = new THREE.Mesh(new THREE.RingGeometry(ARENA_R + 1, 220, 64).rotateX(-Math.PI / 2), M(new THREE.Color(def.g2).multiplyScalar(0.9)));
   outside.position.y = -0.02; world.add(outside);
   // a hedge of bushes all the way round
-  const n = 140, hedge = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), M(def.hedge), n), dm = new THREE.Object3D();
+  const n = 200, hedge = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), M(def.hedge), n), dm = new THREE.Object3D();
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2, s = 1.1 + rnd() * 0.5;
     dm.position.set(Math.cos(a) * (ARENA_R + 1.2), 0.5, Math.sin(a) * (ARENA_R + 1.2)); dm.scale.set(s, s * 0.9, s); dm.updateMatrix(); hedge.setMatrixAt(i, dm.matrix);
@@ -281,7 +287,7 @@ function buildWorld(def) {
   world.add(hedge);
   // things to steer around
   obstacles = [];
-  for (let k = 0; k < 14; k++) {
+  for (let k = 0; k < 24; k++) {
     let x, z;
     for (let t = 0; t < 40; t++) {
       const a = rnd() * Math.PI * 2, r = 9 + rnd() * (ARENA_R - 13);
@@ -303,8 +309,8 @@ function buildWorld(def) {
     world.add(g); obstacles.push({ x, z, r });
   }
   // scenery beyond the hedge
-  for (let k = 0; k < 24; k++) {
-    const a = k / 24 * Math.PI * 2 + rnd() * 0.2, r = ARENA_R + 10 + rnd() * 30, h = 4 + rnd() * 6;
+  for (let k = 0; k < 34; k++) {
+    const a = k / 34 * Math.PI * 2 + rnd() * 0.2, r = ARENA_R + 10 + rnd() * 35, h = 4 + rnd() * 7;
     const t = def.obstacle === 'candy' ? new THREE.Mesh(new THREE.SphereGeometry(h * 0.8, 12, 8), M(new THREE.Color().setHSL(rnd(), 0.7, 0.7)))
       : new THREE.Mesh(new THREE.ConeGeometry(h * 0.5, h * 1.6, 8), M(def.obstacle === 'snow' ? 0x2e7d4f : 0x388e3c));
     t.position.set(Math.cos(a) * r, h * 0.6, Math.sin(a) * r); world.add(t);
@@ -344,6 +350,60 @@ function makeFood(type) {
     add(new THREE.SphereGeometry(0.2, 10, 8), 0x212121, 0, -0.2, 0.5);
     for (const [x, z] of [[0.2, 0.15], [-0.2, 0.15], [0.18, -0.25], [-0.18, -0.25], [0, -0.05]]) add(new THREE.SphereGeometry(0.08, 6, 5), 0x212121, x, 0.08, z);
     for (const x of [-0.08, 0.08]) add(new THREE.SphereGeometry(0.05, 6, 5), 0xffffff, x, -0.1, 0.66);
+  }
+  else if (type === 'rabbit') {
+    const fur = [0xffffff, 0xd7ccc8, 0xbdbdbd][Math.floor(Math.random() * 3)];
+    const b = add(new THREE.SphereGeometry(0.45, 14, 12), fur, 0, 0.45, -0.05); b.scale.set(1, 0.9, 1.2);
+    add(new THREE.SphereGeometry(0.32, 14, 12), fur, 0, 0.85, 0.42);
+    for (const s of [-1, 1]) {
+      const ear = add(new THREE.SphereGeometry(0.12, 10, 8), fur, s * 0.12, 1.32, 0.34); ear.scale.set(1, 3, 0.6); ear.rotation.z = -s * 0.15;
+      const inner = add(new THREE.SphereGeometry(0.07, 8, 6), 0xf8bbd0, s * 0.12, 1.32, 0.41); inner.scale.set(1, 3.4, 0.4); inner.rotation.z = -s * 0.15;
+      add(new THREE.SphereGeometry(0.05, 6, 6), 0x111111, s * 0.13, 0.93, 0.7);
+      add(new THREE.SphereGeometry(0.12, 8, 6), fur, s * 0.2, 0.1, 0.3);
+    }
+    add(new THREE.SphereGeometry(0.05, 6, 6), 0xff80ab, 0, 0.82, 0.74);
+    add(new THREE.SphereGeometry(0.16, 10, 8), 0xffffff, 0, 0.5, -0.6);
+  } else if (type === 'frog') {
+    const b = add(new THREE.SphereGeometry(0.45, 14, 12), 0x66bb6a, 0, 0.32, 0); b.scale.set(1.15, 0.7, 1.2);
+    const belly = add(new THREE.SphereGeometry(0.38, 12, 10), 0xc5e1a5, 0, 0.26, 0.12); belly.scale.set(1, 0.55, 1);
+    for (const s of [-1, 1]) {
+      add(new THREE.SphereGeometry(0.15, 10, 8), 0xffffff, s * 0.2, 0.62, 0.3);
+      add(new THREE.SphereGeometry(0.07, 8, 6), 0x111111, s * 0.2, 0.66, 0.43);
+      const leg = add(new THREE.SphereGeometry(0.2, 10, 8), 0x43a047, s * 0.4, 0.18, -0.25); leg.scale.set(0.8, 0.6, 1.5);
+      add(new THREE.SphereGeometry(0.08, 8, 6), 0x43a047, s * 0.25, 0.06, 0.42);
+    }
+    add(new THREE.BoxGeometry(0.32, 0.03, 0.03), 0x1b5e20, 0, 0.36, 0.55);
+  } else if (type === 'chick') {
+    add(new THREE.SphereGeometry(0.32, 14, 12), 0xffeb3b, 0, 0.32, 0);
+    add(new THREE.SphereGeometry(0.22, 12, 10), 0xffeb3b, 0, 0.7, 0.12);
+    const beak = add(new THREE.ConeGeometry(0.07, 0.18, 8), 0xff9800, 0, 0.68, 0.38); beak.rotation.x = Math.PI / 2;
+    for (const s of [-1, 1]) {
+      add(new THREE.SphereGeometry(0.04, 6, 6), 0x111111, s * 0.09, 0.76, 0.3);
+      const w = add(new THREE.SphereGeometry(0.14, 8, 6), 0xfdd835, s * 0.3, 0.35, -0.02); w.scale.set(0.4, 0.8, 1.1);
+      add(new THREE.BoxGeometry(0.06, 0.04, 0.16), 0xff9800, s * 0.1, 0.02, 0.05);
+    }
+  } else if (type === 'mouse') {
+    const b = add(new THREE.SphereGeometry(0.3, 12, 10), 0x9e9e9e, 0, 0.28, 0); b.scale.set(0.9, 0.8, 1.4);
+    const hd = add(new THREE.SphereGeometry(0.2, 12, 10), 0x9e9e9e, 0, 0.33, 0.42); hd.scale.set(1, 0.9, 1.3);
+    for (const s of [-1, 1]) {
+      const e = add(new THREE.SphereGeometry(0.14, 10, 8), 0x9e9e9e, s * 0.15, 0.55, 0.36); e.scale.set(1, 1, 0.3);
+      const ei = add(new THREE.SphereGeometry(0.09, 8, 6), 0xf8bbd0, s * 0.15, 0.55, 0.39); ei.scale.set(1, 1, 0.3);
+      add(new THREE.SphereGeometry(0.035, 6, 6), 0x111111, s * 0.09, 0.4, 0.62);
+    }
+    add(new THREE.SphereGeometry(0.045, 6, 6), 0xff80ab, 0, 0.33, 0.7);
+    const tail = add(new THREE.CylinderGeometry(0.02, 0.03, 0.9, 6), 0xf48fb1, 0, 0.2, -0.78); tail.rotation.x = Math.PI / 2.3;
+  } else if (type === 'butterfly') {
+    const hue = Math.random();
+    const bod = add(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), 0x3e2723, 0, 0, 0); bod.rotation.x = Math.PI / 2;
+    const wingMat = new THREE.MeshLambertMaterial({ color: new THREE.Color().setHSL(hue, 0.8, 0.6), side: THREE.DoubleSide });
+    const spotMat = new THREE.MeshLambertMaterial({ color: new THREE.Color().setHSL((hue + 0.5) % 1, 0.8, 0.6), side: THREE.DoubleSide });
+    body.userData.wings = [-1, 1].map(s => {
+      const pivot = new THREE.Group(); body.add(pivot);
+      for (const [r, z, m] of [[0.36, 0.12, wingMat], [0.25, -0.18, wingMat], [0.12, 0.12, spotMat]]) {
+        const w = new THREE.Mesh(new THREE.CircleGeometry(r, 16), m); w.rotation.x = -Math.PI / 2; w.position.set(s * (r + 0.02), m === spotMat ? 0.005 : 0, z); pivot.add(w);
+      }
+      pivot.userData.side = s; return pivot;
+    });
   }
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.75, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: FOODS[type].color, transparent: true, opacity: 0.45, depthWrite: false }));
   ring.position.y = 0.03; g.add(ring);
@@ -401,7 +461,7 @@ function newGame() {
     turnInput: 0, nextMilestone: 10, respawn: [], deadT: 0, parts: [], floats: [], tongueT: 0,
   };
   for (const f of world.children.filter(c => c.userData.food)) world.remove(f);
-  for (let i = 0; i < 9; i++) spawnFood();
+  for (let i = 0; i < 14; i++) spawnFood();
   placeCamera(true);
   hideScreens(); $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
   setMsg(''); updateHud();
@@ -431,7 +491,57 @@ function spawnFood(type) {
     break;
   }
   const g = makeFood(type); g.position.set(x, 0, z); g.userData.food = true; world.add(g);
-  game.foods.push({ type, g, x, z, t: Math.random() * 6, dir: Math.random() * Math.PI * 2, pop: 0.5 });
+  game.foods.push({ type, g, x, z, t: Math.random() * 6, dir: Math.random() * Math.PI * 2, pop: 0.5, size: FOODS[type].move ? 1.35 : 1 }); // animals a bit bigger
+}
+// how fast each animal runs: [scared within, scared speed, calm speed]
+const RUN = { scurry: [7, 3.6, 1.2], zigzag: [7, 5.0, 1.6], waddle: [5, 2.2, 0.8], flutter: [6, 3.2, 1.8] };
+function keepInside(f) {
+  const r = Math.hypot(f.x, f.z); if (r > ARENA_R - 2) { f.x *= (ARENA_R - 2) / r; f.z *= (ARENA_R - 2) / r; f.dir = Math.atan2(-f.x, -f.z); }
+  for (const o of obstacles) { const dx = f.x - o.x, dz = f.z - o.z, dd = Math.hypot(dx, dz) || 1; if (dd < o.r + 0.7) { f.x = o.x + dx / dd * (o.r + 0.7); f.z = o.z + dz / dd * (o.r + 0.7); } }
+}
+function moveCritter(f, F, dt) {
+  const g = game, body = f.g.children[0], m = F.move;
+  const d = state === 'play' ? Math.hypot(f.x - g.x, f.z - g.z) : 99, away = Math.atan2(f.x - g.x, f.z - g.z);
+  if (RUN[m]) {
+    const [near, fast, slow] = RUN[m], scared = d < near;
+    if (scared) f.dir = away + Math.sin(f.t * (m === 'zigzag' ? 7 : 3)) * (m === 'zigzag' ? 0.9 : 0.6);
+    else f.dir += (Math.random() - 0.5) * dt * (m === 'flutter' ? 3 : 2);
+    const sp = scared ? fast : slow;
+    f.x += Math.sin(f.dir) * sp * dt; f.z += Math.cos(f.dir) * sp * dt;
+    keepInside(f);
+    body.rotation.y = f.dir;
+    if (m === 'waddle') { body.rotation.z = Math.sin(f.t * 10) * 0.15; body.position.y = F.baseY + Math.abs(Math.sin(f.t * 10)) * 0.05; }
+    else if (m === 'flutter') {
+      body.position.y = F.baseY + Math.sin(f.t * 2) * 0.3;
+      for (const w of body.userData.wings) w.rotation.z = w.userData.side * (0.2 + Math.abs(Math.sin(f.t * 14)) * 1.1);
+    } else body.position.y = F.baseY + Math.abs(Math.sin(f.t * 14)) * (m === 'zigzag' ? 0.03 : 0.05);
+  } else { // rabbits hop, frogs sit still then do big leaps
+    const frog = m === 'leap', scared = d < (frog ? 5 : 8);
+    if (!f.jump) {
+      if (f.wait == null) f.wait = Math.random();
+      f.wait -= dt;
+      if (scared && f.wait > (frog ? 0.25 : 0.12)) f.wait = frog ? 0.25 : 0.12;
+      if (f.wait <= 0) {
+        let dir = scared ? away + (Math.random() - 0.5) * 0.8 : Math.random() * Math.PI * 2;
+        const dist = frog ? (scared ? 4.5 : 3) : (scared ? 3.2 : 1.8);
+        let x1 = f.x + Math.sin(dir) * dist, z1 = f.z + Math.cos(dir) * dist;
+        if (Math.hypot(x1, z1) > ARENA_R - 2.5) { dir = Math.atan2(-f.x, -f.z); x1 = f.x + Math.sin(dir) * dist; z1 = f.z + Math.cos(dir) * dist; }
+        f.jump = { x0: f.x, z0: f.z, x1, z1, t: 0, dur: frog ? 0.55 : (scared ? 0.32 : 0.4), h: frog ? 1.5 : (scared ? 0.9 : 0.6) };
+        f.dir = dir;
+        if (frog && d < 18 && Math.random() < 0.5) { Sound.tone(150, 0.1, 'square', 0.04, -40); Sound.tone(130, 0.12, 'square', 0.04, -40, 0.13); } // ribbit
+      }
+      body.position.y = F.baseY; body.scale.set(1, 1 + Math.sin(f.t * 3) * 0.03, 1);
+    } else {
+      const j = f.jump; j.t += dt; const k = Math.min(1, j.t / j.dur);
+      f.x = j.x0 + (j.x1 - j.x0) * k; f.z = j.z0 + (j.z1 - j.z0) * k;
+      body.position.y = F.baseY + Math.sin(Math.PI * k) * j.h;
+      const st = 1 + Math.sin(Math.PI * k) * 0.15; body.scale.set(1 / Math.sqrt(st), st, 1 / Math.sqrt(st));
+      if (k >= 1) { f.jump = null; f.wait = frog ? (scared ? 0.3 : 1 + Math.random() * 2) : (scared ? 0.12 : 0.4 + Math.random()); }
+      keepInside(f);
+    }
+    body.rotation.y += wrapAngle(f.dir - body.rotation.y) * Math.min(1, dt * 10);
+  }
+  f.g.position.set(f.x, 0, f.z);
 }
 function removeFood(f) {
   world.remove(f.g); disposeGroup(f.g);
@@ -517,20 +627,12 @@ function update(dt) {
   // foods bob, spin, ladybugs wander
   for (const f of g.foods) {
     f.t += dt;
-    if (FOODS[f.type].runs && state === 'play') {
-      const d = Math.hypot(f.x - g.x, f.z - g.z);
-      if (d < 7) f.dir = Math.atan2(f.x - g.x, f.z - g.z) + Math.sin(f.t * 3) * 0.6; // scurry away
-      else f.dir += (Math.random() - 0.5) * dt * 2;
-      const sp = d < 7 ? 3.6 : 1.2;
-      f.x += Math.sin(f.dir) * sp * dt; f.z += Math.cos(f.dir) * sp * dt;
-      const r = Math.hypot(f.x, f.z); if (r > ARENA_R - 2) { f.x *= (ARENA_R - 2) / r; f.z *= (ARENA_R - 2) / r; f.dir += Math.PI; }
-      for (const o of obstacles) { const dx = f.x - o.x, dz = f.z - o.z, dd = Math.hypot(dx, dz); if (dd < o.r + 0.7) { f.x = o.x + dx / dd * (o.r + 0.7); f.z = o.z + dz / dd * (o.r + 0.7); } }
-      f.g.position.set(f.x, 0, f.z); f.g.children[0].rotation.y = f.dir; f.g.children[0].position.y = 0.35 + Math.abs(Math.sin(f.t * 14)) * 0.05;
-    } else {
+    if (FOODS[f.type].move) { if (state === 'play' || state === 'countdown') moveCritter(f, FOODS[f.type], dt); }
+    else {
       f.g.children[0].position.y = 0.75 + Math.sin(f.t * 2.5) * 0.15;
       f.g.children[0].rotation.y = f.t * 1.5;
     }
-    if (f.pop > 0) { f.pop -= dt; f.g.scale.setScalar(1 - Math.max(0, f.pop) / 0.5); }
+    if (f.pop > 0) { f.pop -= dt; f.g.scale.setScalar(f.size * (1 - Math.max(0, f.pop) / 0.5)); }
     if (f.g.children[0].userData.rainbow) f.g.children[0].userData.rainbow.material.color.setHSL((f.t * 0.5) % 1, 0.9, 0.6);
   }
   updateParticles(dt);
@@ -573,7 +675,7 @@ function eat(f) {
   g.grow += F.grow; g.eaten++;
   burst(f.x, 0.8, f.z, F.color, 18);
   floatText('+' + F.grow, f.x, f.z);
-  Sound.crunch();
+  if (F.move) Sound.tone(320, 0.22, 'sine', 0.12, -220); else Sound.crunch();
   [523, 659, 784].forEach((fr, i) => Sound.tone(fr * (F.grow > 1 ? 1.25 : 1), 0.1, 'triangle', 0.09, 0, 0.05 + i * 0.05));
   if (F.power === 'zoom') { g.zoom = 5; setMsg('ZOOM!', true, true); g.msgT = 1.2; Sound.tone(200, 0.6, 'sawtooth', 0.1, 600); }
   if (F.power === 'rainbow') { g.rainbow = 8; setMsg('RAINBOW!', true, true); g.msgT = 1.2; [784, 988, 1175, 1568].forEach((fr, i) => Sound.tone(fr, 0.15, 'square', 0.06, 0, i * 0.07)); }
