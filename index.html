@@ -48,10 +48,12 @@ h1 { font: 22px/1.4 var(--font-display); color: var(--accent); text-align: cente
 .play { margin-top: auto; align-self: flex-start; font: 11px var(--font-display); background: var(--accent); color: var(--accent-ink); padding: 10px 14px; border: 3px solid var(--line); border-radius: 6px; }
 .soon { opacity: .5; pointer-events: none; }
 .soon .play { background: var(--panel-2); color: var(--ink-dim); }
+#fullBtn { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 16px; padding: 8px 14px; background: #3b2f22; color: #f5ecd6; border: 3px solid #0c0906; border-radius: 999px; font: 800 14px Nunito, system-ui, sans-serif; cursor: pointer; }
 </style>
 </head>
 <body>
 <main>
+  <button id="fullBtn" type="button" hidden>&#9974; Full screen</button>
   <h1>Family Game Box</h1>
   <p class="sub">Pick a game to play!</p>
   <ul id="games"></ul>
@@ -83,6 +85,16 @@ for (const g of GAMES) {
   list.appendChild(li);
 }
 </script>
-<script src="update.js" data-version="2026-10-12.1"></script>
+<script src="games/shared/game-nav.js"></script>
+<script>
+(function () { // full screen button, only where the device allows it
+  const b = document.getElementById('fullBtn');
+  const sync = () => { b.hidden = !GameNav.canFull(); b.textContent = GameNav.isFull() ? '🗗 Exit full screen' : '⛶ Full screen'; };
+  b.addEventListener('click', () => { GameNav.isFull() ? GameNav.exitFull() : GameNav.enterFull(); });
+  document.addEventListener('fullscreenchange', sync); document.addEventListener('webkitfullscreenchange', sync);
+  sync();
+})();
+</script>
+<script src="update.js" data-version="2026-10-13.1"></script>
 </body>
 </html>

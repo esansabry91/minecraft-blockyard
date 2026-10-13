@@ -40,7 +40,7 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 #draw { position: fixed; inset: 0; display: flex; flex-direction: column; padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); gap: 10px; }
 .top { display: flex; align-items: center; gap: 12px; min-height: 40px; }
 .top h1 { font: 18px var(--font-display); color: var(--accent); margin: 0; flex: 1; text-align: center; }
-.back { color: var(--ink-dim); font-weight: 800; font-size: 14px; text-decoration: none; white-space: nowrap; }
+.back { display: inline-block; padding: 8px 14px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 999px; font: 800 15px var(--font-body); text-decoration: none; white-space: nowrap; cursor: pointer; }
 .chip { padding: 8px 12px; border: 3px solid var(--line); border-radius: 10px; background: var(--panel-2); font: 800 14px var(--font-body); white-space: nowrap; }
 .body { flex: 1; min-height: 0; display: flex; gap: 12px; align-items: center; justify-content: center; }
 .paperBox { position: relative; aspect-ratio: 1; height: 100%; max-width: calc(100vw - 330px); max-height: 100%; background: #fff; border: 4px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 0 rgba(0,0,0,.35); flex-shrink: 1; }
@@ -147,6 +147,7 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
     <a class="back" href="../../index.html">&larr; All games</a>
     <h1>Magic Doodles</h1>
     <button class="chip" id="toWorldBtn" type="button" hidden>&#127757; My world</button>
+    <button class="chip" id="drawMenuBtn" type="button" aria-label="Menu">&#9776; Menu</button>
   </div>
   <div class="body">
     <div class="paperBox">
@@ -197,7 +198,7 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 
 <div id="photo" hidden>
   <div class="top">
-    <button class="back" id="photoBack" type="button" style="background:none;border:0;padding:0">&larr; Back</button>
+    <button class="back" id="photoBack" type="button">&larr; Back</button>
     <h1>Your photo</h1>
     <span style="width:52px"></span>
   </div>
@@ -212,6 +213,7 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 
 <div id="hud" hidden>
   <div id="hudTop">
+    <button class="bigChip" id="worldMenuBtn" type="button" aria-label="Menu" style="background:rgba(42,33,24,.92);color:var(--ink)">&#9776;</button>
     <button class="bigChip" id="drawBtn" type="button">&#9999;&#65039; Draw</button>
     <div class="spacer"></div>
     <div id="worldBtns">
@@ -276,6 +278,7 @@ canvas#world { position: fixed; inset: 0; width: 100%; height: 100%; display: bl
 
 <script src="../../update.js"></script>
 <script src="../shared/audio-unlock.js"></script>
+<script src="../shared/game-nav.js"></script>
 <script src="../shared/three.r128.min.js"></script>
 <script>
 'use strict';
@@ -2147,6 +2150,26 @@ $('createBtn').addEventListener('click', async () => {
 });
 $('toWorldBtn').addEventListener('click', () => showWorld(null));
 $('drawBtn').addEventListener('click', showDraw);
+$('drawMenuBtn').addEventListener('click', () => GameNav.open({
+  title: 'Menu',
+  items: [
+    { icon: '✏️', label: 'Keep drawing', resume: true, primary: true },
+    ...(loadDoodles().length ? [{ icon: '🌍', label: 'Go to my world', fn: () => showWorld(null) }] : []),
+  ],
+}));
+$('worldMenuBtn').addEventListener('click', () => GameNav.open({
+  title: 'Menu',
+  items: [
+    { icon: '▶️', label: 'Keep playing', resume: true, primary: true },
+    { icon: '✏️', label: 'Draw something new', fn: showDraw },
+  ],
+}));
+// go full screen the first time anything is tapped (where the device allows it)
+document.addEventListener('click', function firstTap(e) {
+  if (e.target.closest('a')) return;
+  document.removeEventListener('click', firstTap, true);
+  GameNav.enterFull();
+}, true);
 $('feedBtn').addEventListener('click', () => { hideTip(); dropFood(); });
 (function buildSheet() {
   for (const [type, T] of Object.entries(BUILD_TYPES)) {
