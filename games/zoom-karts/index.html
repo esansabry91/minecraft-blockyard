@@ -71,7 +71,8 @@ button { font-family: inherit; cursor: pointer; }
 /* Screens */
 .screen { position: fixed; inset: 0; overflow-y: auto; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: rgba(18,24,43,.55); }
 .panel { max-width: 860px; margin: 0 auto; background: var(--panel); border: 4px solid var(--line); border-radius: 12px; padding: 18px 20px 22px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
-.back { display: inline-block; margin: 0 0 8px; color: var(--ink-dim); font-weight: 800; font-size: 14px; text-decoration: none; }
+.back { display: inline-block; margin: 0 0 10px; padding: 8px 14px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 999px; font-weight: 800; font-size: 15px; text-decoration: none; }
+.iconBtn.wide { width: auto; padding: 0 14px; font: 800 16px var(--font-body); }
 h1 { font: 26px/1.3 var(--font-display); color: var(--accent); margin: 0 0 4px; }
 h2 { font: 12px var(--font-display); color: var(--ink-dim); margin: 20px 0 10px; letter-spacing: 1px; }
 .lead { margin: 0; color: var(--ink-dim); font-weight: 600; }
@@ -107,7 +108,7 @@ dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
 .fields input { font: 800 17px var(--font-body); padding: 10px 12px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 8px; min-width: 0; }
 .fields input:focus { outline: 3px solid var(--accent); }
 .wide { width: 100%; margin-top: 12px; }
-button.back { background: none; border: 0; padding: 0; cursor: pointer; }
+button.back { cursor: pointer; }
 #roomPeers { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 #roomPeers li { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 3px solid var(--line); border-radius: 8px; padding: 6px 8px; font-weight: 800; }
 #roomPeers img { width: 52px; height: 42px; object-fit: contain; }
@@ -136,7 +137,7 @@ button.back { background: none; border: 0; padding: 0; cursor: pointer; }
     <div id="time">0:00.0</div>
   </div>
   <div id="topBtns">
-    <button class="iconBtn" id="pauseBtn" type="button" aria-label="Pause">II</button>
+    <button class="iconBtn wide" id="pauseBtn" type="button" aria-label="Menu">&#9776; Menu</button>
     <button class="iconBtn" id="muteBtn" type="button" aria-label="Sound on or off">&#9835;</button>
   </div>
   <div id="hudR">
@@ -249,6 +250,7 @@ button.back { background: none; border: 0; padding: 0; cursor: pointer; }
       <button class="btn primary" id="againBtn" type="button">Race again</button>
       <button class="btn" id="nextBtn" type="button">Next track</button>
       <button class="btn" id="menuBtn" type="button">Menu</button>
+      <a class="btn" href="../../index.html">&#127968; All games</a>
       <button class="btn primary" id="roomBtn" type="button" hidden>Back to the room</button>
     </div>
   </div>
@@ -256,6 +258,7 @@ button.back { background: none; border: 0; padding: 0; cursor: pointer; }
 
 <script src="../../update.js"></script>
 <script src="../shared/audio-unlock.js"></script>
+<script src="../shared/game-nav.js"></script>
 <script src="../shared/three.r128.min.js"></script>
 <script src="../shared/peerjs.min.js"></script>
 <script src="../shared/peer-room.js"></script>
@@ -818,7 +821,7 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   keys[e.code] = true;
   if ((e.code === 'KeyX' || e.code === 'KeyE') && (state === 'race')) wantItem = true;
-  if (e.code === 'KeyP' || e.code === 'Escape') { if (state === 'paused') resume(); else pause(); }
+  if (e.code === 'KeyP' || e.code === 'Escape') { if (GameNav.isOpen() || state === 'paused') resume(); else pause(); }
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -1263,12 +1266,20 @@ function fillResults() {
 
 function pause() {
   if (state !== 'race' && state !== 'countdown' && state !== 'finished') return;
-  $('pause').hidden = false;
-  if (race.multi) { race.menuOpen = true; return; } // online races keep going for everyone else
-  pausedFrom = state; state = 'paused';
-  Sound.engineOff();
+  const multi = race.multi;
+  if (multi) race.menuOpen = true; // online races keep going for everyone else
+  else { pausedFrom = state; state = 'paused'; Sound.engineOff(); }
+  GameNav.open({
+    title: multi ? 'Menu' : 'Paused', onClose: resume,
+    items: [
+      { icon: '▶️', label: 'Keep racing', resume: true, primary: true },
+      ...(multi ? [] : [{ icon: '🔁', label: 'Start this race again', fn: () => { GameNav.enterFull(); startRace(); } }]),
+      { icon: '🏁', label: multi ? 'Leave this race' : 'Pick another track or racer', fn: () => { if (race && race.multi) backToRoom(); else showMenu(); } },
+    ],
+  });
 }
 function resume() {
+  GameNav.close(false);
   $('pause').hidden = true;
   for (const k in keys) keys[k] = false;
   if (race && race.multi) { race.menuOpen = false; return; }
@@ -1293,7 +1304,7 @@ $('muteBtn').addEventListener('click', () => { Sound.init(); Sound.setMuted(!Sou
 $('resumeBtn').addEventListener('click', resume);
 $('restartBtn').addEventListener('click', startRace);
 $('quitBtn').addEventListener('click', () => { if (race && race.multi) backToRoom(); else showMenu(); });
-$('againBtn').addEventListener('click', startRace);
+$('againBtn').addEventListener('click', () => { GameNav.enterFull(); startRace(); });
 $('menuBtn').addEventListener('click', showMenu);
 $('roomBtn').addEventListener('click', backToRoom);
 $('nextBtn').addEventListener('click', () => {
@@ -1301,7 +1312,7 @@ $('nextBtn').addEventListener('click', () => {
   sel.track = TRACKS[(i + 1) % TRACKS.length].id; store.set('zoomkarts-track', sel.track);
   renderMenu(); startRace();
 });
-$('raceBtn').addEventListener('click', startRace);
+$('raceBtn').addEventListener('click', () => { GameNav.enterFull(); startRace(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
 
 let pictures = null;
@@ -1476,7 +1487,7 @@ function backToRoom() {
   racerButtons($('roomRacers'), () => { renderRoom(); if (net) net.room.presence({ racer: sel.racer }); });
   renderRoom();
 }
-$('joinBtn').addEventListener('click', joinRoom);
+$('joinBtn').addEventListener('click', () => { GameNav.enterFull(); joinRoom(); });
 $('leaveRoomBtn').addEventListener('click', showMenu);
 $('startNetBtn').addEventListener('click', hostStartRace);
 for (const id of ['pname', 'rcode']) $(id).addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') joinRoom(); });
