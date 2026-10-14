@@ -1,0 +1,1188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#12182b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Family Game Box">
+<link rel="manifest" href="../../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../../icon-192.png">
+<link rel="icon" href="../../icon-192.png">
+<title>Dragon Flight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&family=Press+Start+2P&display=swap">
+<style>
+/* Fly a dragon over a kingdom or a city: collect gems, zoom through rings and cool the grumpy volcanoes. */
+:root {
+  color-scheme: dark;
+  --bg: #12182b;
+  --panel: #2a2118;
+  --panel-2: #3b2f22;
+  --ink: #f5ecd6;
+  --ink-dim: #c9bb9c;
+  --accent: #ffcf3f;
+  --accent-ink: #2a2118;
+  --line: #0c0906;
+  --font-display: "Press Start 2P", ui-monospace, Menlo, monospace;
+  --font-body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--font-body); user-select: none; -webkit-user-select: none; }
+[hidden] { display: none !important; }
+button { font-family: inherit; cursor: pointer; }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.outline { text-shadow: 3px 0 0 var(--line), -3px 0 0 var(--line), 0 3px 0 var(--line), 0 -3px 0 var(--line), 3px 3px 0 var(--line), -3px -3px 0 var(--line), 3px -3px 0 var(--line), -3px 3px 0 var(--line); }
+
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#hudL { position: absolute; left: max(14px, env(safe-area-inset-left)); top: max(12px, env(safe-area-inset-top)); font-family: var(--font-display); }
+#gems { font-size: 22px; color: #7fe3ff; }
+#volc { font-size: 15px; margin-top: 10px; color: var(--accent); }
+#topBtns { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); display: flex; gap: 8px; pointer-events: auto; }
+.iconBtn { width: 50px; height: 50px; border: 3px solid var(--line); border-radius: 12px; background: rgba(42,33,24,.85); color: var(--ink); font: 20px/1 system-ui, sans-serif; display: grid; place-items: center; }
+.iconBtn.wide { width: auto; padding: 0 14px; font: 800 16px var(--font-body); }
+#map { position: absolute; right: max(14px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); width: 140px; height: 140px; border-radius: 50%; border: 3px solid var(--line); background: #2d6fb3; }
+#heat { position: absolute; left: 50%; top: calc(max(12px, env(safe-area-inset-top)) + 64px); transform: translateX(-50%); background: rgba(42,33,24,.85); border: 3px solid var(--line); border-radius: 12px; padding: 6px 12px; font: 800 15px var(--font-body); display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+#heatBar { width: 120px; height: 14px; border: 2px solid var(--line); border-radius: 8px; background: #7fd3ff; overflow: hidden; }
+#heatFill { height: 100%; background: linear-gradient(90deg, #ff9800, #e53935); width: 100%; }
+#msg { position: absolute; left: 0; right: 0; top: 28%; text-align: center; font: 40px/1.3 var(--font-display); color: var(--accent); padding: 0 12px; }
+#msg.small { font-size: 20px; }
+#msg.pop { animation: pop .35s ease-out; }
+@keyframes pop { from { transform: scale(1.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#stickZone { position: absolute; left: 0; bottom: 0; width: 55%; height: 70%; pointer-events: auto; touch-action: none; }
+#stick { position: absolute; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; border: 4px solid rgba(12,9,6,.8); background: rgba(42,33,24,.45); pointer-events: none; }
+#knob { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(255,207,63,.9); border: 4px solid var(--line); }
+#stickHint { position: absolute; left: max(20px, env(safe-area-inset-left)); bottom: max(24px, env(safe-area-inset-bottom)); font: 800 15px var(--font-body); color: #fff; opacity: .85; pointer-events: none; }
+#touch button { pointer-events: auto; touch-action: none; position: absolute; border: 4px solid var(--line); border-radius: 50%; background: rgba(42,33,24,.7); color: var(--ink); font: 800 14px/1.1 var(--font-body); display: grid; place-items: center; }
+#touch button b { font-size: 40px; display: block; }
+#touch button.on { background: rgba(127,227,255,.9); color: var(--accent-ink); }
+#bBreath { right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); width: 128px; height: 128px; }
+#bZoom { right: calc(max(18px, env(safe-area-inset-right)) + 140px); bottom: max(18px, env(safe-area-inset-bottom)); width: 96px; height: 96px; }
+#bZoom b { font-size: 30px !important; }
+
+.screen { position: fixed; inset: 0; overflow-y: auto; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); background: rgba(18,24,43,.45); }
+.panel { max-width: 860px; margin: 0 auto; background: var(--panel); border: 4px solid var(--line); border-radius: 12px; padding: 18px 20px 22px; box-shadow: 0 10px 0 rgba(0,0,0,.35); }
+.back { display: inline-block; margin: 0 0 10px; padding: 8px 14px; background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 999px; font-weight: 800; font-size: 15px; text-decoration: none; }
+h1 { font: 26px/1.3 var(--font-display); color: var(--accent); margin: 0 0 4px; }
+h2 { font: 12px var(--font-display); color: var(--ink-dim); margin: 20px 0 10px; letter-spacing: 1px; }
+.lead { margin: 0; color: var(--ink-dim); font-weight: 600; }
+.grid { display: grid; gap: 10px; }
+#dragons { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+#worlds { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.pick { background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 8px; padding: 8px; text-align: center; font: 800 14px/1.25 var(--font-body); }
+.pick.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.pick canvas { display: block; width: 100%; aspect-ratio: 2 / 1; border-radius: 4px; margin-bottom: 6px; }
+.pick small { display: block; font-weight: 600; color: var(--ink-dim); font-size: 12px; margin-top: 2px; }
+.bigBtn { display: block; width: 100%; margin-top: 22px; padding: 16px; font: 18px var(--font-display); background: var(--accent); color: var(--accent-ink); border: 4px solid var(--line); border-radius: 10px; }
+.btnRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 18px; }
+.btn { padding: 12px; font: 800 15px var(--font-body); background: var(--panel-2); color: var(--ink); border: 3px solid var(--line); border-radius: 8px; text-align: center; text-decoration: none; }
+#freshBtn { margin-top: 10px; background: none; border: 0; color: var(--ink-dim); font: 700 13px var(--font-body); text-decoration: underline; padding: 4px; }
+dl.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 14px; }
+dl.keys dt { font: 10px/1.9 var(--font-display); color: var(--accent); }
+dl.keys dd { margin: 0; color: var(--ink-dim); font-weight: 600; }
+@media (max-height: 520px) {
+  #gems { font-size: 16px; } #volc { font-size: 11px; } #map { width: 100px; height: 100px; } #msg { font-size: 24px; top: 36%; }
+  #bBreath { width: 104px; height: 104px; } #bZoom { width: 80px; height: 80px; right: calc(max(18px, env(safe-area-inset-right)) + 114px); }
+  #heat { top: calc(max(12px, env(safe-area-inset-top)) + 58px); }
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="hud" hidden>
+  <div id="hudL" class="outline">
+    <div id="gems">💎 0</div>
+    <div id="volc">🌋 0/4</div>
+  </div>
+  <div id="topBtns">
+    <button class="iconBtn wide" id="pauseBtn" type="button" aria-label="Menu">&#9776; Menu</button>
+    <button class="iconBtn" id="muteBtn" type="button" aria-label="Sound on or off">&#128266;</button>
+  </div>
+  <canvas id="map" width="140" height="140"></canvas>
+  <div id="heat" hidden><span id="heatLabel">🌋 Grumpy!</span><div id="heatBar"><div id="heatFill"></div></div></div>
+  <div id="msg" class="outline"></div>
+  <div id="touch" hidden>
+    <div id="stickZone"></div>
+    <div id="stick" hidden><div id="knob"></div></div>
+    <div id="stickHint" class="outline">Drag here to fly</div>
+    <button id="bZoom" type="button" aria-label="Fly fast"><span><b>💨</b>ZOOM</span></button>
+    <button id="bBreath" type="button" aria-label="Snowflake breath"><span><b>❄️</b>BREATH</span></button>
+  </div>
+</div>
+
+<div id="menu" class="screen">
+  <div class="panel">
+    <a class="back" href="../../index.html">&larr; All games</a>
+    <h1>Dragon Flight</h1>
+    <p class="lead">Fly your dragon, collect the sparkly gems and cool down the grumpy volcanoes with your snowflake breath!</p>
+    <h2>CHOOSE YOUR DRAGON</h2>
+    <div class="grid" id="dragons"></div>
+    <h2>WHERE DO YOU WANT TO FLY?</h2>
+    <div class="grid" id="worlds"></div>
+    <button class="bigBtn" id="playBtn" type="button">FLY!</button>
+    <button id="freshBtn" type="button">Start this world again from the beginning</button>
+    <h2>HOW TO PLAY</h2>
+    <dl class="keys" id="keysDesk">
+      <dt>&larr; &rarr; or A D</dt><dd>Turn left and right</dd>
+      <dt>&uarr; &darr; or W S</dt><dd>Fly up and down</dd>
+      <dt>SPACE</dt><dd>Hold for snowflake breath</dd>
+      <dt>SHIFT</dt><dd>Hold to fly fast</dd>
+      <dt>P or ESC</dt><dd>Menu</dd>
+    </dl>
+    <dl class="keys" id="keysTouch" hidden>
+      <dt>LEFT SIDE</dt><dd>Put your finger down and drag to steer. Up to climb, down to dive.</dd>
+      <dt>&#10052;&#65039;</dt><dd>Hold for snowflake breath</dd>
+      <dt>&#128168;</dt><dd>Hold to fly fast</dd>
+    </dl>
+    <p class="lead" style="margin-top:14px;font-size:14px">&#127755; Breathe snowflakes on a grumpy volcano until it smiles. &#128142; Grab the gems floating in the sky. &#11093; Golden rings and &#127752; the rainbow give you a speed boost. Your gems and happy volcanoes are saved, so you can carry on next time!</p>
+  </div>
+</div>
+
+<script src="../../update.js"></script>
+<script src="../shared/audio-unlock.js"></script>
+<script src="../shared/game-nav.js"></script>
+<script src="../shared/three.r128.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const PARAMS = new URLSearchParams(location.search);
+const AUTOPILOT = PARAMS.has('autopilot'); // for testing: the computer flies
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+};
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const wrapAngle = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
+
+// ---------- Game data ----------
+const ISLAND_R = 215, FLAT_R = 90, FLAT_H = 3, EDGE_R = 250, CEILING = 115;
+const GEM_COUNT = 80;
+const DRAGONS = [
+  { id: 'ruby', name: 'Ruby', body: 0xe53935, belly: 0xffcc80, wing: 0xff8a65, horn: 0xfff3c4, breath: 0xbfefff },
+  { id: 'princess', name: 'Princess Pink', body: 0xf06292, belly: 0xfce4ec, wing: 0xce93d8, horn: 0xffd54f, breath: 0xffd6f5, crown: true },
+  { id: 'sky', name: 'Sky Blue', body: 0x42a5f5, belly: 0xe3f2fd, wing: 0x80deea, horn: 0xffffff, breath: 0xd7f6ff },
+  { id: 'emerald', name: 'Emerald', body: 0x43a047, belly: 0xdcedc8, wing: 0xffd54f, horn: 0xfff8e1, breath: 0xe0ffe8 },
+  { id: 'gold', name: 'Golden Sun', body: 0xffb300, belly: 0xfff8e1, wing: 0xff7043, horn: 0x8d6e63, breath: 0xfff6c8 },
+  { id: 'midnight', name: 'Midnight', body: 0x5e35b1, belly: 0xb39ddb, wing: 0x26c6da, horn: 0xffeb3b, breath: 0xe6dcff, stars: true },
+];
+const WORLDS = [
+  { id: 'kingdom', name: 'Princess Kingdom', blurb: 'Castles, palaces, sheep and a rainbow', sky: 0x9fd8ff, grass: [0x7ccf5a, 0x6abf4b], seed: 11, emoji: '🏰👑🐑' },
+  { id: 'city', name: 'Tower City', blurb: 'Skyscrapers, the Sky Tower and busy cars', sky: 0xa8d0f0, grass: [0x6fbf55, 0x5fae49], seed: 29, emoji: '🏙️🗼🚗', city: true },
+];
+let sel = { dragon: store.get('dragon-pick', 'ruby'), world: store.get('dragon-world', 'kingdom') };
+if (!DRAGONS.some(d => d.id === sel.dragon)) sel.dragon = 'ruby';
+if (!WORLDS.some(w => w.id === sel.world)) sel.world = 'kingdom';
+// progress per world: which gems are collected and which volcanoes are happy
+function loadProgress(id) {
+  const all = store.get('dragon-progress', {}), p = all[id] || {};
+  return { gems: Array.isArray(p.gems) ? p.gems : [], volc: Array.isArray(p.volc) ? p.volc : [], saved: !!p.saved };
+}
+function saveProgress(id, p) { const all = store.get('dragon-progress', {}); all[id] = p; store.set('dragon-progress', all); }
+
+// ---------- Sound ----------
+const Sound = {
+  ctx: null, muted: store.get('dragon-muted', false), noise: null, breath: null, wind: null,
+  init() {
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+      const n = this.ctx.sampleRate, b = this.ctx.createBuffer(1, n, n), d = b.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      this.noise = b;
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(freq, dur, type = 'square', vol = 0.12, slide = 0, delay = 0) {
+    if (this.muted || !this.ctx) return;
+    const t = this.ctx.currentTime + delay, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(this.ctx.destination); o.start(t); o.stop(t + dur + 0.02);
+  },
+  hiss(dur, freq, vol, q = 1, delay = 0) { // a puff of filtered noise
+    if (this.muted || !this.ctx || !this.noise) return;
+    const t = this.ctx.currentTime + delay, s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    s.buffer = this.noise; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    g.gain.setValueAtTime(0.001, t); g.gain.linearRampToValueAtTime(vol, t + dur * 0.3); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    s.connect(f).connect(g).connect(this.ctx.destination); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.05);
+  },
+  loop(freq, q) { // a held noise sound we can turn up and down
+    if (!this.ctx || !this.noise) return null;
+    const s = this.ctx.createBufferSource(), f = this.ctx.createBiquadFilter(), g = this.ctx.createGain();
+    s.buffer = this.noise; s.loop = true; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q; g.gain.value = 0;
+    s.connect(f).connect(g).connect(this.ctx.destination); s.start();
+    return { f, g };
+  },
+  setLoop(name, vol, freq) {
+    if (!this.ctx) return;
+    if (!this[name]) { this[name] = this.loop(name === 'breath' ? 3200 : 500, name === 'breath' ? 0.8 : 0.6); if (!this[name]) return; }
+    const L = this[name], t = this.ctx.currentTime;
+    L.g.gain.setTargetAtTime(this.muted ? 0 : vol, t, 0.08);
+    if (freq) L.f.frequency.setTargetAtTime(freq, t, 0.2);
+  },
+  chime(step) { const base = 880 * Math.pow(2, Math.min(step, 12) / 12); this.tone(base, 0.18, 'triangle', 0.1); this.tone(base * 1.5, 0.22, 'sine', 0.06, 0, 0.05); },
+  roar() { this.tone(180, 0.6, 'sawtooth', 0.09, -90); this.tone(240, 0.5, 'square', 0.04, -120, 0.05); this.hiss(0.6, 600, 0.12, 0.7); },
+  fanfare() { [523, 659, 784, 1047, 784, 1047, 1319].forEach((fr, i) => this.tone(fr, 0.2, 'square', 0.07, 0, i * 0.12)); },
+};
+function updateMuteBtn() { $('muteBtn').textContent = Sound.muted ? '🔇' : '🔊'; }
+
+// ---------- 3D setup ----------
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_TOUCH ? 1.5 : 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(65, 1, 0.5, 1200);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x6a8a55, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(60, 120, 40); scene.add(sun);
+function resize() {
+  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize); resize();
+const M = c => new THREE.MeshLambertMaterial({ color: c });
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t; }
+// Glue every non-moving piece that shares a colour into one mesh, so phones draw a few
+// big things instead of hundreds of little ones. Groups marked userData.keep are left alone.
+function matKey(m) { return [m.type, m.color && m.color.getHex(), m.emissive && m.emissive.getHex(), m.map ? m.map.uuid : '', m.side, m.transparent].join('|'); }
+function mergeByMaterial(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), buckets = new Map(), victims = [];
+  (function walk(o) {
+    if (o !== root && o.userData.keep) return;
+    if (o.isMesh && !o.isInstancedMesh && !o.material.vertexColors) victims.push(o);
+    for (const c of o.children) walk(c);
+  })(root);
+  for (const o of victims) {
+    const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    const k = matKey(o.material);
+    if (!buckets.has(k)) buckets.set(k, { mat: o.material, geos: [] });
+    buckets.get(k).geos.push(g);
+    o.parent.remove(o);
+  }
+  for (const { mat, geos } of buckets.values()) {
+    let n = 0; for (const g of geos) n += g.attributes.position.count;
+    const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2); let o = 0;
+    for (const g of geos) {
+      const c = g.attributes.position.count;
+      pos.set(g.attributes.position.array, o * 3);
+      if (g.attributes.normal) nor.set(g.attributes.normal.array, o * 3);
+      if (g.attributes.uv) uv.set(g.attributes.uv.array, o * 2);
+      o += c; g.dispose();
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.computeBoundingSphere();
+    root.add(new THREE.Mesh(geo, mat));
+  }
+}
+function disposeGroup(g) { g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); }
+
+// ---------- The world ----------
+let world = null, worldDef = null, solids = [], volcanoes = [], gems = [], rings = [], rainbow = null, sheep = [], cars = [], flags = [], clouds = [];
+let PEAKS = [];
+let seed = 1; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+function terrainH(x, z) {
+  const r = Math.hypot(x, z);
+  let h = FLAT_H;
+  const hill = smooth(FLAT_R, FLAT_R + 45, r);
+  if (hill > 0) h += hill * (7 + Math.sin(x * 0.031 + 1.3) * Math.cos(z * 0.027 + 0.4) * 6 + Math.sin(x * 0.071 + z * 0.053) * 2.5);
+  for (const p of PEAKS) { const d = Math.hypot(x - p.x, z - p.z) / p.rad; if (d < 1) { const k = 1 - d * d; h += p.h * k * k; } }
+  const edge = smooth(ISLAND_R - 28, ISLAND_R, r);
+  return h * (1 - edge) - 4 * edge;
+}
+function groundY(x, z) { return Math.max(0, terrainH(x, z)); }
+
+// faces for the volcanoes, drawn once
+function faceTex(happy) {
+  return canvasTex(256, 256, (x) => {
+    x.lineCap = 'round'; x.lineJoin = 'round';
+    x.fillStyle = happy ? 'rgba(255,138,128,.75)' : 'rgba(255,82,82,.8)';
+    for (const s of [-1, 1]) { x.beginPath(); x.ellipse(128 + s * 74, 150, 26, 16, 0, 0, 7); x.fill(); }
+    x.strokeStyle = '#1b1210'; x.fillStyle = '#1b1210'; x.lineWidth = 14;
+    if (happy) {
+      for (const s of [-1, 1]) { x.beginPath(); x.arc(128 + s * 50, 112, 22, Math.PI * 1.1, Math.PI * 1.9); x.stroke(); }
+      x.beginPath(); x.arc(128, 150, 46, 0.15 * Math.PI, 0.85 * Math.PI); x.stroke();
+    } else {
+      for (const s of [-1, 1]) {
+        x.fillStyle = '#fff'; x.beginPath(); x.arc(128 + s * 50, 112, 22, 0, 7); x.fill();
+        x.fillStyle = '#1b1210'; x.beginPath(); x.arc(128 + s * 46, 116, 11, 0, 7); x.fill();
+        x.beginPath(); x.moveTo(128 + s * 82, 70); x.lineTo(128 + s * 24, 92); x.stroke(); // cross eyebrows
+      }
+      x.beginPath(); x.arc(128, 205, 40, 1.2 * Math.PI, 1.8 * Math.PI); x.stroke(); // frown
+    }
+  });
+}
+const FACE_GRUMPY = faceTex(false), FACE_HAPPY = faceTex(true);
+const LAVA_TEX = canvasTex(256, 256, (x) => {
+  x.fillStyle = '#6d4c41'; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = '#5d4037'; for (let i = 0; i < 60; i++) { x.beginPath(); x.arc(Math.random() * 256, Math.random() * 256, 4 + Math.random() * 8, 0, 7); x.fill(); }
+  x.fillStyle = '#ff7a1a';
+  for (let i = 0; i < 8; i++) { const cx = i * 32 + 12, len = 50 + Math.random() * 80; x.beginPath(); x.moveTo(cx - 7, 0); x.lineTo(cx + 7, 0); x.quadraticCurveTo(cx + 9, len * 0.7, cx, len); x.quadraticCurveTo(cx - 9, len * 0.7, cx - 7, 0); x.fill(); }
+});
+const HAPPY_TEX = canvasTex(256, 256, (x) => {
+  x.fillStyle = '#66bb6a'; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = '#fff'; x.beginPath(); x.moveTo(0, 0); x.lineTo(256, 0); x.lineTo(256, 40);
+  for (let i = 8; i >= 0; i--) x.lineTo(i * 32, 40 + (i % 2) * 18); x.fill();
+  const cols = ['#ff80ab', '#ffeb3b', '#ffffff', '#ba68c8', '#ff7043'];
+  for (let i = 0; i < 90; i++) { x.fillStyle = cols[i % cols.length]; x.beginPath(); x.arc(Math.random() * 256, 70 + Math.random() * 186, 3 + Math.random() * 3, 0, 7); x.fill(); }
+});
+const WINDOW_TEX = canvasTex(64, 64, (x) => {
+  x.fillStyle = '#fff'; x.fillRect(0, 0, 64, 64);
+  x.fillStyle = '#9fd3ff'; for (let i = 0; i < 2; i++) for (let j = 0; j < 2; j++) x.fillRect(6 + i * 32, 8 + j * 32, 20, 18);
+});
+WINDOW_TEX.wrapS = WINDOW_TEX.wrapT = THREE.RepeatWrapping;
+
+function addSolid(x, z, r, top) { solids.push({ x, z, r, h: top }); }
+
+function buildWorld(def) {
+  if (world) { scene.remove(world); disposeGroup(world); }
+  worldDef = def;
+  world = new THREE.Group(); scene.add(world);
+  solids = []; volcanoes = []; gems = []; rings = []; sheep = []; cars = []; flags = []; clouds = [];
+  scene.background = new THREE.Color(def.sky);
+  scene.fog = new THREE.Fog(def.sky, 180, 520);
+  seed = def.seed * 7919;
+  // mountains round the edge: four of them are volcanoes
+  PEAKS = [];
+  const volcA = [];
+  for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4 + (rnd() - 0.5) * 0.3; volcA.push(a); PEAKS.push({ x: Math.cos(a) * 150, z: Math.sin(a) * 150, h: 10, rad: 40 }); }
+  for (let k = 0; k < 6; k++) { const a = k * Math.PI / 3 + 0.4 + rnd() * 0.3; if (volcA.some(v => Math.abs(wrapAngle(v - a)) < 0.45)) continue; PEAKS.push({ x: Math.cos(a) * 168, z: Math.sin(a) * 168, h: 22 + rnd() * 14, rad: 26 + rnd() * 8 }); }
+
+  // ground
+  const SIZE = 500, SEG = 120, geo = new THREE.PlaneGeometry(SIZE, SIZE, SEG, SEG).rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), c = new THREE.Color();
+  const sand = new THREE.Color(0xf2dca0), rock = new THREE.Color(0x9e9488), snow = new THREE.Color(0xffffff), g1 = new THREE.Color(def.grass[0]), g2 = new THREE.Color(def.grass[1]);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i), h = terrainH(x, z);
+    pos.setY(i, h);
+    if (h < 1.6) c.copy(sand); else if (h > 34) c.copy(snow); else if (h > 22) c.copy(rock); else c.copy(g1).lerp(g2, (Math.sin(x * 0.2) * Math.cos(z * 0.2) + 1) / 2);
+    cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); geo.computeVertexNormals();
+  world.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true })));
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3fa9f5 }));
+  sea.position.y = 0.2; world.add(sea);
+
+  if (def.city) buildCity(); else buildKingdom();
+  buildVolcanoes(volcA);
+  buildTrees(def.city ? 260 : 340);
+  buildClouds();
+  buildRings();
+  buildRainbow(def.city ? new THREE.Vector3(-30, FLAT_H, 120) : new THREE.Vector3(0, FLAT_H, -70), def.city ? 0 : Math.PI / 2);
+  buildGems();
+  mergeByMaterial(world);
+}
+
+function boxWithWindows(w, h, d, color) { // building with a grid of windows on every side
+  const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv;
+  const spans = [[d, h], [d, h], [0, 0], [0, 0], [w, h], [w, h]];
+  for (let f = 0; f < 6; f++) for (let v = 0; v < 4; v++) {
+    const i = f * 4 + v; uv.setXY(i, uv.getX(i) * spans[f][0] / 4, uv.getY(i) * spans[f][1] / 4);
+  }
+  return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color, map: WINDOW_TEX }));
+}
+function makeHouse(x, z, wall, roof) {
+  const g = new THREE.Group(), y = groundY(x, z);
+  const b = new THREE.Mesh(new THREE.BoxGeometry(4, 3.4, 4), M(wall)); b.position.y = 1.7; g.add(b);
+  const r = new THREE.Mesh(new THREE.ConeGeometry(3.4, 2.6, 4), M(roof)); r.position.y = 4.7; r.rotation.y = Math.PI / 4; g.add(r);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 0.1), M(0x6d4c41)); door.position.set(0, 0.9, 2.02); g.add(door);
+  g.position.set(x, y, z); g.rotation.y = rnd() * Math.PI * 2; world.add(g);
+  addSolid(x, z, 2.8, y + 6);
+}
+function makeTower(g, x, z, r, h, wall, roof, flag) {
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, h, 16), M(wall)); t.position.set(x, h / 2, z); g.add(t);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(r * 1.3, r * 2.6, 16), M(roof)); cone.position.set(x, h + r * 1.3, z); g.add(cone);
+  for (let i = 0; i < 3; i++) { const w = new THREE.Mesh(new THREE.BoxGeometry(r * 0.35, r * 0.6, 0.1), M(0x3e2723)); const a = i * 2.1; w.position.set(x + Math.sin(a) * r * 1.01, h * 0.7, z + Math.cos(a) * r * 1.01); w.rotation.y = a; g.add(w); }
+  if (flag) {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3, 6), M(0x9e9e9e)); pole.position.set(x, h + r * 2.6 + 1.3, z); g.add(pole);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.3), new THREE.MeshLambertMaterial({ color: flag, side: THREE.DoubleSide }));
+    f.geometry.translate(1.1, 0, 0); f.position.set(x, h + r * 2.6 + 2.2, z); f.userData.keep = true; g.add(f); flags.push(f);
+  }
+  return h + r * 2.6;
+}
+function makeCastle(x, z, s, pal) {
+  const g = new THREE.Group(), y = FLAT_H; g.position.set(x, y, z); world.add(g);
+  const half = 9 * s, wallH = 6 * s;
+  for (let k = 0; k < 4; k++) { // walls with battlements
+    const along = k % 2 === 0, wx = along ? 0 : (k === 1 ? half : -half), wz = along ? (k === 0 ? half : -half) : 0;
+    const w = new THREE.Mesh(new THREE.BoxGeometry(along ? half * 2 : 1.4 * s, wallH, along ? 1.4 * s : half * 2), M(pal.wall));
+    w.position.set(wx, wallH / 2, wz); g.add(w);
+    for (let i = -3; i <= 3; i++) {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(1.1 * s, 1.1 * s, 1.5 * s), M(pal.wall));
+      b.position.set(wx + (along ? i * half / 3.5 : 0), wallH + 0.5 * s, wz + (along ? 0 : i * half / 3.5)); g.add(b);
+    }
+    for (let i = -4; i <= 4; i += 2) addSolid(x + (along ? i * half / 4 : wx), z + (along ? wz : i * half / 4), 2.2 * s, y + wallH + s);
+  }
+  const gate = new THREE.Mesh(new THREE.BoxGeometry(3 * s, 4 * s, 0.4), M(0x5d4037)); gate.position.set(0, 2 * s, half + 0.6 * s); g.add(gate);
+  for (const [cx, cz] of [[half, half], [-half, half], [half, -half], [-half, -half]]) {
+    const top = makeTower(g, cx, cz, 2.2 * s, 11 * s, pal.wall, pal.roof, pal.flag);
+    addSolid(x + cx, z + cz, 2.8 * s, y + top);
+  }
+  const keep = new THREE.Mesh(new THREE.BoxGeometry(9 * s, 13 * s, 9 * s), M(pal.keep)); keep.position.y = 6.5 * s; g.add(keep);
+  for (const [cx, cz] of [[4.5, 4.5], [-4.5, 4.5], [4.5, -4.5], [-4.5, -4.5]]) makeTower(g, cx * s, cz * s, 1.3 * s, 16 * s, pal.keep, pal.roof2 || pal.roof);
+  const top = makeTower(g, 0, 0, 2.4 * s, 22 * s, pal.wall, pal.roof2 || pal.roof, pal.flag);
+  addSolid(x, z, 7 * s, y + 13 * s); addSolid(x, z, 2.8 * s, y + top);
+  if (pal.gold) { const ball = new THREE.Mesh(new THREE.SphereGeometry(0.9 * s, 12, 10), new THREE.MeshLambertMaterial({ color: 0xffd54f, emissive: 0x6b4f00 })); ball.position.y = top + 0.4 * s; g.add(ball); }
+}
+function buildKingdom() {
+  makeCastle(0, 0, 1.6, { wall: 0xfce4ec, keep: 0xf8bbd0, roof: 0xec407a, roof2: 0xab47bc, flag: 0xffd54f, gold: true });
+  makeCastle(62, 38, 1.05, { wall: 0xe3f2fd, keep: 0xbbdefb, roof: 0x1e88e5, flag: 0xffffff });
+  makeCastle(-58, 44, 1.05, { wall: 0xede7f6, keep: 0xd1c4e9, roof: 0x7e57c2, flag: 0xff80ab });
+  makeCastle(40, -62, 0.95, { wall: 0xfff8e1, keep: 0xffecb3, roof: 0xef6c00, flag: 0xe53935 });
+  const walls = [0xfff3e0, 0xfce4ec, 0xe1f5fe, 0xf1f8e9, 0xfffde7], roofs = [0xe53935, 0x1e88e5, 0x8e24aa, 0xef6c00, 0x43a047];
+  for (let i = 0; i < 34; i++) {
+    let x, z, ok = false;
+    for (let t = 0; t < 30 && !ok; t++) { const a = rnd() * Math.PI * 2, r = 30 + rnd() * 105; x = Math.cos(a) * r; z = Math.sin(a) * r; ok = solids.every(s => Math.hypot(s.x - x, s.z - z) > s.r + 5) && terrainH(x, z) < 14 && Math.hypot(x, z + 70) > 30; }
+    if (ok) makeHouse(x, z, walls[i % 5], roofs[(i * 3) % 5]);
+  }
+  // a flock of sheep in the meadow
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * Math.PI * 2, r = 25 + rnd() * 55, s = makeSheep();
+    s.position.set(Math.cos(a) * r, 0, Math.sin(a) * r); world.add(s);
+    sheep.push({ g: s, h: rnd() * 7, t: rnd() * 3, hop: 0, vy: 0, y: 0 });
+  }
+}
+function makeSheep() {
+  const g = new THREE.Group(), wool = M(0xffffff), dark = M(0x3e2723);
+  const b = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 10), wool); b.scale.set(1, 0.85, 1.3); b.position.y = 1.3; g.add(b);
+  for (let i = 0; i < 5; i++) { const p = new THREE.Mesh(new THREE.SphereGeometry(0.55, 8, 6), wool); p.position.set((i % 2 - 0.5) * 0.9, 1.9, (i - 2) * 0.45); g.add(p); }
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), dark); h.position.set(0, 1.55, 1.35); h.scale.z = 1.2; g.add(h);
+  for (const s of [-1, 1]) {
+    const e = new THREE.Mesh(new THREE.SphereGeometry(0.11, 6, 6), wool); e.position.set(s * 0.22, 1.7, 1.8); g.add(e);
+    for (const z of [-0.6, 0.6]) { const l = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.8, 6), dark); l.position.set(s * 0.45, 0.4, z); g.add(l); }
+  }
+  g.scale.setScalar(1.3);
+  mergeByMaterial(g); g.userData.keep = true;
+  return g;
+}
+function buildCity() {
+  // roads: a grid every 16 steps, drawn on one big disk
+  const R = FLAT_R - 2;
+  const tex = canvasTex(704, 704, (x) => {
+    x.fillStyle = '#c9c4bb'; x.fillRect(0, 0, 704, 704);
+    x.fillStyle = '#55595f'; for (let k = 0; k <= 11; k++) { x.fillRect(k * 64 - 12, 0, 24, 704); x.fillRect(0, k * 64 - 12, 704, 24); }
+    x.fillStyle = '#ffd54f'; for (let k = 0; k <= 11; k++) for (let j = 0; j < 704; j += 16) { x.fillRect(k * 64 - 1, j, 2, 8); x.fillRect(j, k * 64 - 1, 8, 2); }
+  });
+  const disk = new THREE.Mesh(new THREE.CircleGeometry(R, 64).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: tex }));
+  disk.position.y = FLAT_H + 0.05; world.add(disk);
+  const pal = [0x90caf9, 0xffcc80, 0xef9a9a, 0xce93d8, 0xa5d6a7, 0xfff59d, 0xb0bec5, 0x80cbc4];
+  const parks = [];
+  for (let gx = -5; gx <= 5; gx++) for (let gz = -5; gz <= 5; gz++) {
+    const x = gx * 16, z = gz * 16, r = Math.hypot(x, z);
+    if (r > R - 9 || (Math.abs(gx) <= 1 && Math.abs(gz) <= 1)) continue;
+    if (rnd() < 0.13) { parks.push([x, z]); continue; }
+    const w = 8 + rnd() * 3, d = 8 + rnd() * 3, h = 8 + rnd() * 10 + (1 - r / R) * 38 * (0.5 + rnd() * 0.7);
+    const b = boxWithWindows(w, h, d, pal[Math.floor(rnd() * pal.length)]); b.position.set(x, FLAT_H + h / 2, z); world.add(b);
+    const roofTop = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.6, d + 0.4), M(0x78909c)); roofTop.position.set(x, FLAT_H + h + 0.3, z); world.add(roofTop);
+    let top = FLAT_H + h + 0.6;
+    if (rnd() < 0.3) { const a = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 6, 6), M(0xe0e0e0)); a.position.set(x, top + 3, z); world.add(a); const l = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff1744 })); l.position.set(x, top + 6, z); world.add(l); }
+    else if (rnd() < 0.3) { const hp = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.2, 20), M(0x37474f)); hp.position.set(x, top + 0.1, z); world.add(hp); const hm = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.05, 0.5), M(0xffffff)); hm.position.set(x, top + 0.23, z); world.add(hm); }
+    addSolid(x, z, Math.max(w, d) * 0.62, top);
+  }
+  // the Sky Tower in the middle
+  const g = new THREE.Group(); g.position.y = FLAT_H; world.add(g);
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(18, 18, 0.3, 40), M(0xe0d6c8)); plaza.position.y = 0.1; g.add(plaza);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(5, 8, 16, 20), M(0xeceff1)); base.position.y = 8; g.add(base);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3.2, 58, 16), M(0xeceff1)); shaft.position.y = 44; g.add(shaft);
+  const pod = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 6, 7, 24), new THREE.MeshLambertMaterial({ color: 0x4fc3f7, emissive: 0x0a3d5c })); pod.position.y = 76; g.add(pod);
+  const podTop = new THREE.Mesh(new THREE.CylinderGeometry(4, 7.5, 3, 24), M(0xeceff1)); podTop.position.y = 81; g.add(podTop);
+  const spire = new THREE.Mesh(new THREE.ConeGeometry(1.2, 22, 10), M(0xffd54f)); spire.position.y = 93.5; g.add(spire);
+  const light = new THREE.Mesh(new THREE.SphereGeometry(0.8, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff1744 })); light.position.y = 105; g.add(light);
+  addSolid(0, 0, 8.5, FLAT_H + 16); addSolid(0, 0, 4, FLAT_H + 72); addSolid(0, 0, 8.5, FLAT_H + 83); addSolid(0, 0, 1.8, FLAT_H + 104);
+  for (const [x, z] of parks) for (let i = 0; i < 4; i++) treeSpots.push([x + (i % 2 - 0.5) * 7, z + (i < 2 ? -3.5 : 3.5), 'round']);
+  // cars drive up and down the roads
+  const carCols = [0xe53935, 0x1e88e5, 0xfdd835, 0x43a047, 0xffffff, 0xff9800, 0x8e24aa];
+  for (let i = 0; i < 22; i++) {
+    const lane = (Math.floor(rnd() * 10) - 5) * 16 + 8, alongX = rnd() < 0.5, len = Math.sqrt(Math.max(0, (R - 6) ** 2 - lane * lane));
+    const car = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 3.6), M(carCols[i % carCols.length])); body.position.y = 0.8; car.add(body);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 1.8), M(0xb3e5fc)); cab.position.set(0, 1.6, -0.2); car.add(cab);
+    for (const sx of [-1, 1]) for (const sz of [-1.1, 1.1]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.3, 10).rotateZ(Math.PI / 2), M(0x212121)); w.position.set(sx * 1.05, 0.4, sz); car.add(w); }
+    mergeByMaterial(car); car.userData.keep = true; world.add(car);
+    const dir = rnd() < 0.5 ? 1 : -1;
+    cars.push({ g: car, lane: lane + dir * 2.2 * (alongX ? -1 : 1), alongX, len, s: (rnd() * 2 - 1) * len, dir, v: 7 + rnd() * 5 });
+  }
+  // houses in the hills round the city
+  const walls = [0xfff3e0, 0xe1f5fe, 0xf1f8e9, 0xfce4ec], roofs = [0xe53935, 0x546e7a, 0x1e88e5, 0x6d4c41];
+  for (let i = 0; i < 30; i++) {
+    let x, z, ok = false;
+    for (let t = 0; t < 30 && !ok; t++) { const a = rnd() * Math.PI * 2, r = 96 + rnd() * 40; x = Math.cos(a) * r; z = Math.sin(a) * r; ok = terrainH(x, z) < 16 && solids.every(s => Math.hypot(s.x - x, s.z - z) > s.r + 5); }
+    if (ok) makeHouse(x, z, walls[i % 4], roofs[(i * 3) % 4]);
+  }
+}
+let treeSpots = [];
+function buildTrees(n) {
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * Math.PI * 2, r = 12 + Math.sqrt(rnd()) * 195, x = Math.cos(a) * r, z = Math.sin(a) * r, h = terrainH(x, z);
+    if (h < 1.8 || h > 24) continue;
+    if (worldDef.city && r < FLAT_R) continue;
+    if (solids.some(s => Math.hypot(s.x - x, s.z - z) < s.r + 3)) continue;
+    if (Math.hypot(x, z + 70) < 12 && !worldDef.city) continue;
+    treeSpots.push([x, z, r > FLAT_R + 20 && rnd() < 0.7 ? 'pine' : 'round']);
+  }
+  const trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.4, 0.55, 3, 6), M(0x8d5a2b), treeSpots.length);
+  const rounds = treeSpots.filter(t => t[2] === 'round'), pines = treeSpots.filter(t => t[2] === 'pine');
+  const tops = new THREE.InstancedMesh(new THREE.SphereGeometry(2.4, 8, 6), M(0x43a047), rounds.length);
+  const cones = new THREE.InstancedMesh(new THREE.ConeGeometry(2.4, 7, 8), M(0x2e7d32), pines.length);
+  const dm = new THREE.Object3D(); let ti = 0, ri = 0, pi = 0;
+  for (const [x, z, kind] of treeSpots) {
+    const y = groundY(x, z), s = 0.8 + rnd() * 0.6;
+    dm.position.set(x, y + 1.5 * s, z); dm.scale.setScalar(s); dm.rotation.set(0, 0, 0); dm.updateMatrix(); trunks.setMatrixAt(ti++, dm.matrix);
+    if (kind === 'round') { dm.position.set(x, y + 4.4 * s, z); dm.updateMatrix(); tops.setMatrixAt(ri++, dm.matrix); }
+    else { dm.position.set(x, y + 5.5 * s, z); dm.updateMatrix(); cones.setMatrixAt(pi++, dm.matrix); }
+  }
+  world.add(trunks, tops, cones);
+  treeSpots = [];
+}
+function buildClouds() {
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x555555 });
+  const layer = new THREE.Group(); world.add(layer); clouds.push(layer);
+  for (let i = 0; i < 34; i++) {
+    const g = new THREE.Group(), a = rnd() * Math.PI * 2, r = rnd() * 260;
+    for (let k = 0; k < 5; k++) { const p = new THREE.Mesh(new THREE.SphereGeometry(4 + rnd() * 4, 10, 8), mat); p.position.set((k - 2) * 5 + rnd() * 2, rnd() * 2, rnd() * 5); p.scale.y = 0.7; g.add(p); }
+    g.position.set(Math.cos(a) * r, 72 + rnd() * 30, Math.sin(a) * r); g.rotation.y = rnd() * 3; layer.add(g);
+  }
+  mergeByMaterial(layer); layer.userData.keep = true;
+}
+function buildVolcanoes(angles) {
+  const prog = loadProgress(worldDef.id);
+  angles.forEach((a, k) => {
+    const x = Math.cos(a) * 150, z = Math.sin(a) * 150, baseY = terrainH(x, z) - 5, h = 40, topR = 7, botR = 28;
+    const g = new THREE.Group(); g.position.set(x, baseY, z); g.userData.keep = true; world.add(g);
+    const happy = prog.volc.includes(k);
+    const mat = new THREE.MeshLambertMaterial({ map: happy ? HAPPY_TEX : LAVA_TEX });
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(topR, botR, h, 32, 1, true), mat); cone.position.y = h / 2; g.add(cone);
+    const crater = new THREE.Mesh(new THREE.CircleGeometry(topR, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: happy ? 0x81d4fa : 0xff6d00 }));
+    crater.position.y = h - 1.2; g.add(crater);
+    const face = new THREE.Sprite(new THREE.SpriteMaterial({ map: happy ? FACE_HAPPY : FACE_GRUMPY, transparent: true, depthWrite: false }));
+    face.scale.set(15, 15, 1); world.add(face);
+    const v = { id: k, x, z, baseY, h, topR, botR, g, cone, crater, face, heat: happy ? 0 : 100, happy, smokeT: 0, bombT: 2 + k, cheerT: 0 };
+    volcanoes.push(v);
+    addSolid(x, z, botR * 0.75, baseY + h * 0.35); addSolid(x, z, (topR + botR) * 0.5 * 0.8, baseY + h * 0.7); addSolid(x, z, topR + 1, baseY + h);
+  });
+}
+function buildRings() {
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffd54f, emissive: 0x7a5a00 });
+  const geo = new THREE.TorusGeometry(5, 0.6, 10, 32);
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, r = 112 + Math.sin(i * 1.7) * 10, x = Math.cos(a) * r, z = Math.sin(a) * r;
+    const y = Math.max(groundY(x, z) + 12, 26 + Math.sin(i * 0.9) * 10);
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.userData.keep = true;
+    const tangent = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)); // fly round the island
+    m.lookAt(x + tangent.x, y, z + tangent.z); world.add(m);
+    rings.push({ m, pos: m.position.clone(), n: tangent, r: 5.3, side: 0, cd: 0 });
+  }
+}
+function buildRainbow(base, rotY) {
+  const g = new THREE.Group(); g.position.copy(base); g.rotation.y = rotY; world.add(g);
+  const cols = [0xe53935, 0xff9800, 0xffeb3b, 0x43a047, 0x1e88e5, 0x8e24aa];
+  cols.forEach((c, i) => { const t = new THREE.Mesh(new THREE.TorusGeometry(26 - i * 1.3, 0.7, 8, 48, Math.PI), new THREE.MeshLambertMaterial({ color: c, emissive: new THREE.Color(c).multiplyScalar(0.35) })); g.add(t); });
+  for (const s of [-1, 1]) { const cl = new THREE.Mesh(new THREE.SphereGeometry(5, 10, 8), new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x555555 })); cl.position.set(s * 21, 1, 0); cl.scale.set(1.4, 0.8, 1); g.add(cl); }
+  const n = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), rotY);
+  rainbow = { pos: base.clone(), n, r: 26, side: 0, cd: 0 };
+}
+const GEM_COLS = [0x40c4ff, 0xff4081, 0x69f0ae, 0xffd740, 0xe040fb, 0xff6e40];
+const gemGeo = new THREE.OctahedronGeometry(1.1, 0);
+const gemMats = GEM_COLS.map(c => new THREE.MeshLambertMaterial({ color: c, emissive: new THREE.Color(c).multiplyScalar(0.45) }));
+function buildGems() {
+  const prog = loadProgress(worldDef.id), have = new Set(prog.gems);
+  const per = Math.ceil(GEM_COUNT / gemMats.length);
+  const insts = gemMats.map(m => { const im = new THREE.InstancedMesh(gemGeo, m, per); im.count = 0; im.frustumCulled = false; world.add(im); return im; });
+  let id = 0;
+  // trails of gems swooping through the sky
+  while (id < GEM_COUNT) {
+    const a = rnd() * Math.PI * 2, r = 20 + rnd() * 175, dir = rnd() * Math.PI * 2, curve = (rnd() - 0.5) * 0.25, rise = (rnd() - 0.5) * 1.2;
+    let x = Math.cos(a) * r, z = Math.sin(a) * r, y = 0, d = dir;
+    y = Math.max(groundY(x, z) + 10, 14 + rnd() * 40);
+    for (let k = 0; k < 8 && id < GEM_COUNT; k++) {
+      const top = solids.reduce((m, s) => Math.hypot(s.x - x, s.z - z) < s.r + 3 ? Math.max(m, s.h) : m, 0);
+      const gy = Math.max(y, groundY(x, z) + 6, top + 5);
+      const im = insts[id % insts.length], got = have.has(id);
+      gems.push({ id, im, idx: im.count++, x, y: gy, z, got, t: rnd() * 6 });
+      id++; d += curve; x += Math.sin(d) * 7; z += Math.cos(d) * 7; y = clamp(y + rise, 10, 80);
+      if (Math.hypot(x, z) > ISLAND_R) break;
+    }
+  }
+}
+
+// ---------- The dragon ----------
+function makeDragon(def) {
+  const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const mc = M(def.body), mb = M(def.belly), mh = M(def.horn);
+  const mw = new THREE.MeshLambertMaterial({ color: def.wing, side: THREE.DoubleSide, emissive: new THREE.Color(def.wing).multiplyScalar(0.3) });
+  const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m; };
+  const torso = add(body, new THREE.SphereGeometry(1, 18, 14), mc, 0, 0, 0); torso.scale.set(0.95, 0.85, 1.6);
+  const belly = add(body, new THREE.SphereGeometry(0.9, 16, 12), mb, 0, -0.22, 0.15); belly.scale.set(0.8, 0.7, 1.45);
+  if (def.stars) for (let i = 0; i < 9; i++) { const a = i * 2.4, s = add(body, new THREE.SphereGeometry(0.09, 6, 5), new THREE.MeshBasicMaterial({ color: 0xfff59d }), Math.cos(a) * 0.75, 0.45 + Math.sin(i) * 0.2, -1.1 + i * 0.27); s.scale.y = 0.5; }
+  const neck = add(body, new THREE.CylinderGeometry(0.42, 0.62, 1.5, 12), mc, 0, 0.55, 1.45); neck.rotation.x = 0.9;
+  const head = new THREE.Group(); head.position.set(0, 1.15, 2.2); body.add(head);
+  const skull = add(head, new THREE.SphereGeometry(0.75, 16, 12), mc, 0, 0, 0); skull.scale.set(1, 0.9, 1.05);
+  const snout = add(head, new THREE.SphereGeometry(0.52, 14, 10), mc, 0, -0.15, 0.72); snout.scale.set(0.9, 0.72, 1.1);
+  for (const s of [-1, 1]) {
+    add(head, new THREE.SphereGeometry(0.07, 6, 5), M(0x3e2723), s * 0.18, -0.02, 1.27);
+    add(head, new THREE.SphereGeometry(0.28, 12, 10), M(0xffffff), s * 0.36, 0.25, 0.42);
+    add(head, new THREE.SphereGeometry(0.16, 10, 8), M(0x1b1210), s * 0.42, 0.28, 0.62);
+    add(head, new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffffff }), s * 0.45, 0.34, 0.75);
+    const cheek = add(head, new THREE.SphereGeometry(0.16, 8, 6), M(0xff8a80), s * 0.52, -0.12, 0.55); cheek.scale.z = 0.4; cheek.rotation.y = s * 0.9;
+    if (!def.crown) { const horn = add(head, new THREE.ConeGeometry(0.15, 0.7, 8), mh, s * 0.32, 0.72, -0.25); horn.rotation.x = -0.6; }
+    const ear = add(head, new THREE.ConeGeometry(0.18, 0.5, 6), mb, s * 0.68, 0.3, -0.15); ear.rotation.z = -s * 1.1;
+  }
+  if (def.crown) {
+    const gold = new THREE.MeshLambertMaterial({ color: 0xffd54f, emissive: 0x5a4300 });
+    add(head, new THREE.CylinderGeometry(0.42, 0.42, 0.22, 16, 1, true), gold, 0, 0.72, -0.05);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2, p = add(head, new THREE.ConeGeometry(0.1, 0.32, 6), gold, Math.cos(a) * 0.4, 0.98, -0.05 + Math.sin(a) * 0.4); }
+    add(head, new THREE.SphereGeometry(0.1, 8, 6), M(0xff4081), 0, 0.75, 0.38);
+  }
+  for (let i = 0; i < 6; i++) { const sp = add(body, new THREE.ConeGeometry(0.17, 0.5, 6), mh, 0, 0.82 - Math.abs(i - 1.5) * 0.04, 1.0 - i * 0.48); sp.rotation.x = -0.35; }
+  // wings
+  const WING = [[0, 0.3], [1.6, 0.8], [3.9, 1.1], [4.7, -0.3], [3.4, -0.9], [2.3, -1.7], [1.2, -1.4], [0, -1.0]];
+  const wings = [-1, 1].map(s => {
+    const pivot = new THREE.Group(); pivot.position.set(s * 0.65, 0.55, 0.35); body.add(pivot);
+    // built separately for each side (not mirrored) so the lit side faces up on both wings
+    const pts = WING.map(([x, y]) => [x * s, -y]); if (s < 0) pts.reverse();
+    const sh = new THREE.Shape(); pts.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y));
+    const mem = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(-Math.PI / 2), mw); pivot.add(mem);
+    const arm = add(pivot, new THREE.CylinderGeometry(0.1, 0.14, 4.1, 6), mc, s * 2.0, 0.02, 0.55); arm.rotation.z = Math.PI / 2; arm.rotation.y = -s * 0.25;
+    for (const [px, pz] of [[3.4, -0.9], [2.3, -1.7], [1.2, -1.4]]) {
+      const len = Math.hypot(3.9 - px, 1.1 - pz), f = add(pivot, new THREE.CylinderGeometry(0.04, 0.07, len, 5), mc, s * (3.9 + px) / 2, 0.01, (1.1 + pz) / 2);
+      f.rotation.z = Math.PI / 2; f.rotation.y = Math.atan2((1.1 - pz), s * (3.9 - px)) * -1;
+    }
+    pivot.userData.side = s; return pivot;
+  });
+  // tail: a chain that sways
+  const tail = []; let parent = body, r = 0.55;
+  for (let i = 0; i < 8; i++) {
+    const j = new THREE.Group(); j.position.set(0, i === 0 ? 0.05 : 0, i === 0 ? -1.45 : -0.62); parent.add(j);
+    add(j, new THREE.SphereGeometry(r, 10, 8), mc, 0, 0, -0.3);
+    if (i % 2 === 0) { const sp = add(j, new THREE.ConeGeometry(r * 0.35, r * 0.9, 6), mh, 0, r * 0.95, -0.3); sp.rotation.x = -0.4; }
+    tail.push(j); parent = j; r *= 0.84;
+  }
+  const tip = new THREE.Shape(); tip.moveTo(0, 0.1); tip.lineTo(0.55, -0.5); tip.lineTo(0, -1.2); tip.lineTo(-0.55, -0.5); tip.lineTo(0, 0.1);
+  const spade = new THREE.Mesh(new THREE.ShapeGeometry(tip).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ color: def.wing, side: THREE.DoubleSide }));
+  spade.position.z = -0.4; parent.add(spade);
+  // little legs tucked up while flying
+  for (const s of [-1, 1]) for (const [z, y] of [[0.9, -0.6], [-0.9, -0.55]]) { const l = add(body, new THREE.SphereGeometry(0.3, 8, 6), mc, s * 0.55, y, z); l.scale.set(0.9, 0.8, 1.3); add(body, new THREE.SphereGeometry(0.17, 6, 5), mb, s * 0.58, y - 0.2, z + 0.25); }
+  head.userData.keep = true; tail[0].userData.keep = true;
+  for (const w of wings) { mergeByMaterial(w); w.userData.keep = true; }
+  mergeByMaterial(head); mergeByMaterial(body);
+  root.userData = { body, head, wings, tail, flap: 0 };
+  return root;
+}
+function animateDragon(d, dt, flapSpeed, glide, turn, t) {
+  const u = d.userData;
+  u.flap += dt * flapSpeed;
+  const a = glide ? 0.12 + Math.sin(t * 2) * 0.05 : Math.sin(u.flap) * 0.75 + 0.1;
+  for (const w of u.wings) { w.rotation.z = w.userData.side * a; w.rotation.x = glide ? 0 : Math.cos(u.flap) * 0.15; }
+  u.tail.forEach((j, i) => { j.rotation.y = Math.sin(t * 3 - i * 0.6) * 0.12 + turn * 0.1; j.rotation.x = Math.sin(t * 2.2 - i * 0.5) * 0.05 + 0.04; });
+  u.head.rotation.y = -turn * 0.25;
+  u.body.position.y = glide ? 0 : -Math.sin(u.flap) * 0.18;
+  return a;
+}
+
+// ---------- Game state ----------
+let state = 'menu'; // menu | play | paused-play
+let game = null, dragon = null, menuDragon = null;
+const fwd = new THREE.Vector3(), tmpV = new THREE.Vector3(), tmpV2 = new THREE.Vector3();
+function newGame() {
+  hideScreens(); $('hud').hidden = false; $('touch').hidden = !IS_TOUCH;
+  const def = WORLDS.find(w => w.id === sel.world);
+  if (worldDef !== def) buildWorld(def);
+  if (dragon) { scene.remove(dragon); disposeGroup(dragon); }
+  if (menuDragon) { scene.remove(menuDragon); disposeGroup(menuDragon); menuDragon = null; }
+  const ddef = DRAGONS.find(d => d.id === sel.dragon);
+  dragon = makeDragon(ddef); scene.add(dragon);
+  const prog = loadProgress(def.id);
+  game = {
+    def, ddef, prog, t: 0, x: 0, y: 45, z: def.city ? -140 : 140, heading: def.city ? 0 : Math.PI, pitch: 0, roll: 0, turn: 0,
+    speed: 14, turbo: 0, rainbowT: 0, parts: [], combo: 0, comboT: 0, msgT: 3.5, bumpT: 0, lastFlap: 0, edgeWarn: 0, partyT: 0,
+  };
+  const left = 4 - prog.volc.length;
+  setMsg(left ? `Cool the ${left} grumpy volcano${left > 1 ? 'es' : ''}!` : 'Fly free!', true, true);
+  state = 'play';
+  placeCamera(true);
+  Sound.init(); Sound.roar();
+}
+
+function steerInput() {
+  const g = game;
+  if (AUTOPILOT) { // fly to the nearest grumpy volcano and breathe on it
+    const v = volcanoes.filter(v => !v.happy).sort((a, b) => Math.hypot(a.x - g.x, a.z - g.z) - Math.hypot(b.x - g.x, b.z - g.z))[0];
+    if (!v) return { x: 0.3, y: 0, breath: false, boost: false };
+    const want = Math.atan2(v.x - g.x, v.z - g.z), d = Math.hypot(v.x - g.x, v.z - g.z);
+    const ty = v.baseY + v.h + 8, dy = ty - g.y;
+    return { x: clamp(-wrapAngle(want - g.heading) * 2, -1, 1), y: clamp(dy * 0.08 - (d < 50 ? 0.2 : 0), -1, 1), breath: d < 60, boost: d > 90 };
+  }
+  let x = 0, y = 0;
+  if (keys.ArrowLeft || keys.KeyA) x -= 1; if (keys.ArrowRight || keys.KeyD) x += 1;
+  if (keys.ArrowUp || keys.KeyW) y += 1; if (keys.ArrowDown || keys.KeyS) y -= 1;
+  if (stick.on) { x += stick.x; y += stick.y; }
+  return { x: clamp(x, -1, 1), y: clamp(y, -1, 1), breath: keys.Space || touch.breath, boost: keys.ShiftLeft || keys.ShiftRight || touch.boost };
+}
+
+function update(dt) {
+  const g = game; g.t += dt;
+  if (g.msgT > 0) { g.msgT -= dt; if (g.msgT <= 0) setMsg(''); }
+  const inp = steerInput();
+  // turning and climbing
+  g.turn += (inp.x - g.turn) * Math.min(1, dt * 5);
+  g.heading -= g.turn * 1.5 * dt;
+  const wantPitch = inp.y * 0.65;
+  g.pitch += (wantPitch - g.pitch) * Math.min(1, dt * 3);
+  g.roll += (g.turn * 0.7 - g.roll) * Math.min(1, dt * 5);
+  const want = (g.turbo > 0 ? 34 : inp.boost ? 26 : 14) + (g.pitch < 0 ? -g.pitch * 8 : 0);
+  g.speed += (want - g.speed) * Math.min(1, dt * 2.5);
+  g.turbo = Math.max(0, g.turbo - dt); g.rainbowT = Math.max(0, g.rainbowT - dt); g.bumpT = Math.max(0, g.bumpT - dt);
+  fwd.set(Math.sin(g.heading) * Math.cos(g.pitch), Math.sin(g.pitch), Math.cos(g.heading) * Math.cos(g.pitch));
+  const px = g.x, py = g.y, pz = g.z;
+  g.x += fwd.x * g.speed * dt; g.y += fwd.y * g.speed * dt; g.z += fwd.z * g.speed * dt;
+  // never crash: the ground and buildings gently push you up and away
+  const floor = groundY(g.x, g.z) + 2.5;
+  if (g.y < floor) { g.y = floor; if (g.pitch < 0.1) g.pitch += (0.1 - g.pitch) * Math.min(1, dt * 6); }
+  if (g.y > CEILING) { g.y = CEILING; g.pitch = Math.min(g.pitch, 0); }
+  for (const s of solids) {
+    const dx = g.x - s.x, dz = g.z - s.z, d = Math.hypot(dx, dz), R = s.r + 1.6;
+    if (d < R && g.y < s.h + 1.5) {
+      if (g.y > s.h - 3) { g.y = s.h + 1.5; }
+      else { g.x = s.x + dx / (d || 1) * R; g.z = s.z + dz / (d || 1) * R; g.heading += wrapAngle(Math.atan2(dx, dz) - g.heading) * 0.08; }
+      if (g.bumpT <= 0) { g.bumpT = 0.6; Sound.tone(150, 0.18, 'sine', 0.12, 140); }
+    }
+  }
+  // edge of the map: turn back to the island
+  const r = Math.hypot(g.x, g.z);
+  if (r > EDGE_R) {
+    g.heading += wrapAngle(Math.atan2(-g.x, -g.z) - g.heading) * Math.min(1, dt * 1.5);
+    if (g.edgeWarn <= 0) { setMsg('Back to the island!', true, true); g.msgT = 1.8; g.edgeWarn = 5; }
+  }
+  g.edgeWarn -= dt;
+
+  // dragon pose
+  dragon.position.set(g.x, g.y, g.z);
+  dragon.rotation.set(0, g.heading, 0);
+  const body = dragon.userData.body;
+  body.rotation.set(-g.pitch, 0, g.roll);
+  const glide = g.pitch < -0.25 && !inp.boost;
+  const flapSpeed = 7 + (inp.boost || g.turbo > 0 ? 6 : 0) + Math.max(0, g.pitch) * 8;
+  animateDragon(dragon, dt, flapSpeed, glide, g.turn, g.t);
+  const flapCycle = Math.floor(dragon.userData.flap / (Math.PI * 2));
+  if (!glide && flapCycle !== g.lastFlap) { g.lastFlap = flapCycle; Sound.hiss(0.25, 260, 0.06, 0.8); }
+  Sound.setLoop('wind', Math.min(0.06, g.speed * 0.0018), 300 + g.speed * 18);
+
+  // snowflake breath
+  dragon.updateMatrixWorld(true);
+  const mouth = dragon.userData.head.localToWorld(tmpV.set(0, -0.15, 1.3));
+  g.breathing = !!inp.breath;
+  Sound.setLoop('breath', g.breathing ? 0.07 : 0);
+  if (g.breathing) {
+    for (let i = 0; i < 3; i++) breathPuff(mouth, fwd, g.ddef.breath);
+    for (const s of sheep) { // sheep love a cool breeze
+      tmpV2.set(s.g.position.x - g.x, s.g.position.y - g.y, s.g.position.z - g.z);
+      if (tmpV2.length() < 40 && tmpV2.normalize().dot(fwd) > 0.85 && s.hop <= 0) { s.hop = 1; s.vy = 6; Sound.tone(420 + Math.random() * 80, 0.35, 'sawtooth', 0.04, -120); }
+    }
+  }
+  let near = null, nearD = Infinity;
+  for (const v of volcanoes) {
+    const top = tmpV2.set(v.x, v.baseY + v.h, v.z), d = Math.hypot(v.x - g.x, v.z - g.z);
+    if (!v.happy && d < nearD) { nearD = d; near = v; }
+    if (v.happy || !g.breathing) continue;
+    // aim at the top or the side: kids don't need to be exact
+    let hit = d < v.topR + 16 && g.y > v.baseY + v.h - 3 && g.y < v.baseY + v.h + 35; // flying over the top: the snow falls in
+    for (const ty of [v.baseY + v.h, v.baseY + v.h * 0.55]) {
+      top.set(v.x, ty, v.z).sub(mouth); const dist = top.length();
+      if (dist < 75 && top.normalize().dot(fwd) > 0.78) hit = true;
+    }
+    if (hit) {
+      v.heat = Math.max(0, v.heat - dt * 24);
+      if (Math.random() < dt * 12) steamPuff(v);
+      if (v.heat <= 0) coolVolcano(v);
+    }
+  }
+  // heat bar for the nearest grumpy volcano
+  if (near && nearD < 110) {
+    $('heat').hidden = false; $('heatFill').style.width = near.heat + '%';
+    $('heatLabel').textContent = near.heat > 60 ? '🌋 Grumpy!' : near.heat > 25 ? '🌋 Cooling down…' : '🌋 Almost happy!';
+  } else $('heat').hidden = true;
+
+  // gems
+  g.comboT -= dt; if (g.comboT <= 0) g.combo = 0;
+  for (const gm of gems) {
+    if (gm.got) continue;
+    if (Math.abs(gm.x - g.x) < 4 && Math.abs(gm.z - g.z) < 4 && Math.abs(gm.y - g.y) < 4) {
+      gm.got = true; g.prog.gems.push(gm.id); saveProgress(g.def.id, g.prog);
+      Sound.chime(g.combo); g.combo++; g.comboT = 1.6;
+      burst(gm.x, gm.y, gm.z, GEM_COLS[gm.id % GEM_COLS.length], 14);
+      if (g.prog.gems.length === GEM_COUNT) { setMsg('ALL THE GEMS!', true); g.msgT = 3; Sound.fanfare(); g.partyT = 6; }
+    }
+  }
+  // rings and the rainbow
+  for (const ring of rings.concat(rainbow ? [rainbow] : [])) {
+    ring.cd -= dt;
+    tmpV2.set(g.x - ring.pos.x, g.y - ring.pos.y, g.z - ring.pos.z);
+    const side = Math.sign(tmpV2.dot(ring.n)), prev = ring.side; ring.side = side;
+    if (prev && side && side !== prev && ring.cd <= 0) {
+      const inside = tmpV2.length() < ring.r && (ring !== rainbow || g.y > ring.pos.y);
+      if (inside) {
+        ring.cd = 1.5;
+        if (ring === rainbow) { g.rainbowT = 8; g.turbo = 3; setMsg('RAINBOW!', true, true); g.msgT = 1.5; [784, 988, 1175, 1568].forEach((fr, i) => Sound.tone(fr, 0.15, 'square', 0.06, 0, i * 0.07)); }
+        else { g.turbo = 2.5; Sound.tone(500, 0.4, 'sawtooth', 0.06, 700); Sound.tone(1047, 0.2, 'triangle', 0.08, 0, 0.1); burst(ring.pos.x, ring.pos.y, ring.pos.z, 0xffd54f, 18); }
+      }
+    }
+  }
+  if (g.turbo > 0 && Math.random() < dt * 30) trail(g.rainbowT > 0);
+  if (g.rainbowT > 0 && Math.random() < dt * 20) trail(true);
+  // party when the kingdom is saved
+  if (g.partyT > 0) { g.partyT -= dt; if (Math.random() < dt * 4) firework(); }
+  updateWorld(dt);
+  updateParticles(dt);
+  placeCamera(false, dt);
+  updateHud();
+}
+
+function coolVolcano(v) {
+  const g = game;
+  v.happy = true; v.heat = 0; v.cheerT = 1;
+  v.cone.material.map = HAPPY_TEX; v.cone.material.needsUpdate = true;
+  v.crater.material.color.set(0x81d4fa);
+  v.face.material.map = FACE_HAPPY; v.face.material.needsUpdate = true;
+  for (let i = 0; i < 4; i++) burst(v.x + (Math.random() - 0.5) * 20, v.baseY + v.h * (0.4 + Math.random() * 0.6), v.z + (Math.random() - 0.5) * 20, [0xffffff, 0xff80ab, 0xffeb3b, 0x81d4fa][i], 30);
+  if (!g.prog.volc.includes(v.id)) g.prog.volc.push(v.id);
+  const left = 4 - g.prog.volc.length;
+  if (!left) {
+    g.prog.saved = true; g.partyT = 8;
+    setMsg(g.def.city ? 'CITY SAVED!' : 'KINGDOM SAVED!', true); g.msgT = 4;
+    Sound.fanfare(); setTimeout(() => Sound.fanfare(), 1000);
+  } else {
+    setMsg(`Hooray! ${left} more to go!`, true, true); g.msgT = 2.5;
+    [523, 659, 784, 1047].forEach((fr, i) => Sound.tone(fr, 0.18, 'triangle', 0.09, 0, i * 0.1));
+  }
+  saveProgress(g.def.id, g.prog);
+}
+
+const gemDm = new THREE.Object3D();
+function updateWorld(dt) {
+  const t = game ? game.t : performance.now() / 1000;
+  for (const gm of gems) {
+    gm.t += dt;
+    gemDm.position.set(gm.x, gm.y + Math.sin(gm.t * 2) * 0.4, gm.z); gemDm.rotation.set(0, gm.t * 2, 0);
+    gemDm.scale.set(gm.got ? 0 : 1, gm.got ? 0 : 1.4, gm.got ? 0 : 1); gemDm.updateMatrix(); gm.im.setMatrixAt(gm.idx, gemDm.matrix);
+  }
+  for (const m of new Set(gems.map(g => g.im))) m.instanceMatrix.needsUpdate = true;
+  for (const ring of rings) ring.m.rotation.z += dt * 0.8;
+  for (const f of flags) f.rotation.y = Math.sin(t * 3 + f.position.x) * 0.4;
+  for (const c of clouds) c.rotation.y += dt * 0.006;
+  for (const s of sheep) {
+    s.t -= dt;
+    if (s.t <= 0) { s.t = 2 + Math.random() * 4; s.walk = Math.random() < 0.5; s.h += (Math.random() - 0.5) * 2; }
+    if (s.walk) { s.g.position.x += Math.sin(s.h) * dt * 1.2; s.g.position.z += Math.cos(s.h) * dt * 1.2; if (Math.hypot(s.g.position.x, s.g.position.z) > 85) s.h = Math.atan2(-s.g.position.x, -s.g.position.z); }
+    if (s.hop > 0) { s.y += s.vy * dt; s.vy -= 20 * dt; if (s.y <= 0) { s.y = 0; s.hop = 0; } }
+    s.g.position.y = groundY(s.g.position.x, s.g.position.z) + s.y; s.g.rotation.y = s.h;
+  }
+  for (const c of cars) {
+    c.s += c.dir * c.v * dt; if (c.s > c.len) c.s = -c.len; if (c.s < -c.len) c.s = c.len;
+    if (c.alongX) { c.g.position.set(c.s, FLAT_H + 0.1, c.lane); c.g.rotation.y = c.dir > 0 ? Math.PI / 2 : -Math.PI / 2; }
+    else { c.g.position.set(c.lane, FLAT_H + 0.1, c.s); c.g.rotation.y = c.dir > 0 ? 0 : Math.PI; }
+  }
+  for (const v of volcanoes) {
+    // the face always looks at you from the side of the mountain
+    tmpV2.set(camera.position.x - v.x, 0, camera.position.z - v.z).normalize();
+    const wob = v.happy ? Math.sin(t * 3) * 0.6 : Math.sin(t * 9) * 0.25 * (v.heat / 100);
+    v.face.position.set(v.x + tmpV2.x * 22.5 + wob, v.baseY + v.h * 0.38, v.z + tmpV2.z * 22.5);
+    if (v.cheerT > 0) { v.cheerT -= dt; v.g.scale.y = 1 + Math.sin(v.cheerT * 18) * 0.06 * v.cheerT; }
+    if (v.happy) continue;
+    const k = 1 - v.heat / 100; v.crater.material.color.setRGB(lerp(1, 0.5, k), lerp(0.43, 0.83, k), lerp(0, 0.98, k));
+    if (!game) continue;
+    const d = Math.hypot(v.x - game.x, v.z - game.z);
+    if (d > 260) continue;
+    v.smokeT -= dt; if (v.smokeT <= 0) { v.smokeT = 0.25; smokePuff(v); }
+    if (v.heat < 100 && !game.breathing) v.heat = Math.min(100, v.heat + dt * 3); // they warm up slowly again if you leave
+    v.bombT -= dt;
+    if (v.bombT <= 0 && d < 160) { v.bombT = 3 + Math.random() * 3; lavaBombs(v); if (d < 120) Sound.hiss(0.9, 90, 0.18, 0.6); }
+  }
+}
+
+// ---------- Camera ----------
+let camH = 0, camP = 0;
+function placeCamera(snap, dt = 0.016) {
+  const g = game;
+  camH += wrapAngle(g.heading - camH) * (snap ? 1 : Math.min(1, dt * 3));
+  camP += (g.pitch - camP) * (snap ? 1 : Math.min(1, dt * 3));
+  const back = 13 + (g.speed - 14) * 0.15, up = 4.5 - camP * 6;
+  const want = tmpV.set(g.x - Math.sin(camH) * back, g.y + up, g.z - Math.cos(camH) * back);
+  want.y = Math.max(want.y, groundY(want.x, want.z) + 2);
+  if (snap) camera.position.copy(want); else camera.position.lerp(want, 1 - Math.pow(0.0005, dt));
+  camera.lookAt(g.x + Math.sin(camH) * 8, g.y + 1.5 + camP * 6, g.z + Math.cos(camH) * 8);
+  const fov = 65 + (g.speed - 14) * 0.7;
+  if (Math.abs(camera.fov - fov) > 0.1) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 3); camera.updateProjectionMatrix(); }
+}
+
+// ---------- Effects ----------
+const partGeo = new THREE.OctahedronGeometry(0.25), puffGeo = new THREE.SphereGeometry(1, 8, 6);
+const snowTex = canvasTex(64, 64, (x) => {
+  x.strokeStyle = '#fff'; x.lineWidth = 6; x.lineCap = 'round';
+  for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; x.beginPath(); x.moveTo(32 + Math.cos(a) * 26, 32 + Math.sin(a) * 26); x.lineTo(32 - Math.cos(a) * 26, 32 - Math.sin(a) * 26); x.stroke(); }
+});
+const breathMats = {}, smokeMat = new THREE.MeshLambertMaterial({ color: 0x8d8d8d, transparent: true, opacity: 0.6, depthWrite: false });
+const steamMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false, emissive: 0x444444 });
+const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff6d00 });
+const parts = [];
+function addPart(m, v, life, opts = {}) { scene.add(m); parts.push(Object.assign({ m, v, life, max: life }, opts)); }
+function breathPuff(from, dir, color) {
+  if (!breathMats[color]) breathMats[color] = new THREE.SpriteMaterial({ map: snowTex, color, transparent: true, depthWrite: false });
+  const s = new THREE.Sprite(breathMats[color]); s.position.copy(from);
+  const v = dir.clone().multiplyScalar(game.speed + 26).add(new THREE.Vector3((Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 7));
+  addPart(s, v, 0.9, { shared: true, grow: 2, spin: true });
+}
+function steamPuff(v) {
+  const m = new THREE.Mesh(puffGeo, steamMat); m.position.set(v.x + (Math.random() - 0.5) * 6, v.baseY + v.h, v.z + (Math.random() - 0.5) * 6);
+  addPart(m, new THREE.Vector3((Math.random() - 0.5) * 2, 8, (Math.random() - 0.5) * 2), 1.6, { shared: true, grow: 3, float: true });
+}
+function smokePuff(v) {
+  const m = new THREE.Mesh(puffGeo, smokeMat); m.position.set(v.x + (Math.random() - 0.5) * 4, v.baseY + v.h, v.z + (Math.random() - 0.5) * 4);
+  addPart(m, new THREE.Vector3((Math.random() - 0.5) * 2 + 1.5, 5 + Math.random() * 2, (Math.random() - 0.5) * 2), 3.5, { shared: true, grow: 3.5 * (0.4 + v.heat / 160), float: true });
+}
+function lavaBombs(v) {
+  for (let i = 0; i < 3; i++) {
+    const m = new THREE.Mesh(puffGeo, lavaMat); m.scale.setScalar(0.9); m.position.set(v.x, v.baseY + v.h, v.z);
+    const a = Math.random() * Math.PI * 2;
+    addPart(m, new THREE.Vector3(Math.cos(a) * 9, 22 + Math.random() * 8, Math.sin(a) * 9), 4, { shared: true, gravity: 14, lava: true, keep: 0.9 });
+  }
+}
+function burst(x, y, z, color, n) {
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({ color: Math.random() < 0.5 ? color : new THREE.Color().setHSL(Math.random(), 0.9, 0.65) }));
+    m.position.set(x, y, z);
+    const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.3, Math.random() - 0.5).normalize().multiplyScalar(6 + Math.random() * 8);
+    addPart(m, v, 1.1, { gravity: 8, keep: 1.4 });
+  }
+}
+function trail(rainbowCol) {
+  const g = game, col = rainbowCol ? new THREE.Color().setHSL((g.t * 2) % 1, 0.9, 0.6) : new THREE.Color(0xfff59d);
+  const m = new THREE.Mesh(partGeo, new THREE.MeshBasicMaterial({ color: col }));
+  const tail = dragon.userData.tail[4].getWorldPosition(new THREE.Vector3());
+  m.position.copy(tail).add(new THREE.Vector3((Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5, (Math.random() - 0.5) * 1.5));
+  addPart(m, new THREE.Vector3(0, 0.5, 0), 0.8, { keep: 1.6 });
+}
+function firework() {
+  const g = game, a = Math.random() * Math.PI * 2, r = 20 + Math.random() * 60;
+  const cx = g.x + Math.sin(g.heading) * 60 + Math.cos(a) * r * 0.5, cz = g.z + Math.cos(g.heading) * 60 + Math.sin(a) * r * 0.5;
+  burst(cx, g.y + 15 + Math.random() * 20, cz, new THREE.Color().setHSL(Math.random(), 0.9, 0.6).getHex(), 40);
+  Sound.hiss(0.5, 1500, 0.08, 0.5); Sound.tone(200, 0.3, 'sine', 0.06, -120, 0.05);
+}
+function updateParticles(dt) {
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i]; p.life -= dt;
+    if (p.gravity) p.v.y -= p.gravity * dt;
+    if (p.float) p.v.multiplyScalar(1 - dt * 0.5); else if (!p.gravity) p.v.multiplyScalar(1 - dt * 1.2);
+    p.m.position.addScaledVector(p.v, dt);
+    const k = p.life / p.max;
+    if (p.grow) p.m.scale.setScalar(0.4 + (1 - k) * p.grow * (p.float ? 1 : 1) * Math.min(1, k * 4));
+    else if (p.keep) p.m.scale.setScalar(Math.max(0.01, p.keep * Math.min(1, k * 2)));
+    if (p.spin) p.m.material.rotation = 0;
+    if (p.lava && p.m.position.y < groundY(p.m.position.x, p.m.position.z)) p.life = 0;
+    if (p.life <= 0) { scene.remove(p.m); if (!p.shared) p.m.material.dispose(); parts.splice(i, 1); }
+  }
+}
+function clearParticles() { for (const p of parts) { scene.remove(p.m); if (!p.shared) p.m.material.dispose(); } parts.length = 0; }
+
+// ---------- HUD ----------
+const mapCtx = $('map').getContext('2d');
+function setMsg(t, pop, small) {
+  const m = $('msg'); m.textContent = t; m.classList.toggle('small', !!small);
+  if (pop) { m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); }
+}
+function updateHud() {
+  const g = game;
+  $('gems').textContent = `💎 ${g.prog.gems.length}/${GEM_COUNT}`;
+  $('volc').textContent = g.prog.volc.length >= 4 ? '🌋 All happy! ⭐' : `🌋 ${g.prog.volc.length}/4 happy`;
+  const W = 140, cx = W / 2, s = (W / 2 - 4) / 235;
+  mapCtx.clearRect(0, 0, W, W);
+  mapCtx.fillStyle = '#' + new THREE.Color(g.def.grass[0]).getHexString(); mapCtx.beginPath(); mapCtx.arc(cx, cx, ISLAND_R * s, 0, 7); mapCtx.fill();
+  if (g.def.city) { mapCtx.fillStyle = '#9e9e9e'; mapCtx.beginPath(); mapCtx.arc(cx, cx, FLAT_R * s, 0, 7); mapCtx.fill(); }
+  else { mapCtx.font = '14px system-ui'; mapCtx.textAlign = 'center'; mapCtx.textBaseline = 'middle'; mapCtx.fillText('🏰', cx, cx); }
+  mapCtx.fillStyle = '#fff';
+  for (const gm of gems) if (!gm.got) mapCtx.fillRect(cx + gm.x * s - 1, cx + gm.z * s - 1, 2, 2);
+  for (const v of volcanoes) {
+    mapCtx.fillStyle = v.happy ? '#43a047' : '#ff5722'; mapCtx.strokeStyle = '#0c0906'; mapCtx.lineWidth = 2;
+    const vx = cx + v.x * s, vz = cx + v.z * s;
+    mapCtx.beginPath(); mapCtx.moveTo(vx, vz - 7); mapCtx.lineTo(vx + 7, vz + 5); mapCtx.lineTo(vx - 7, vz + 5); mapCtx.closePath(); mapCtx.fill(); mapCtx.stroke();
+  }
+  // you: an arrow pointing where you fly
+  const dx = cx + g.x * s, dz = cx + g.z * s, hs = Math.sin(g.heading), hc = Math.cos(g.heading);
+  mapCtx.fillStyle = '#' + new THREE.Color(g.ddef.body).getHexString(); mapCtx.strokeStyle = '#fff'; mapCtx.lineWidth = 2;
+  mapCtx.beginPath(); mapCtx.moveTo(dx + hs * 8, dz + hc * 8); mapCtx.lineTo(dx - hs * 5 + hc * 5, dz - hc * 5 - hs * 5); mapCtx.lineTo(dx - hs * 5 - hc * 5, dz - hc * 5 + hs * 5); mapCtx.closePath(); mapCtx.fill(); mapCtx.stroke();
+}
+
+// ---------- Input ----------
+const keys = {};
+const touch = { breath: false, boost: false };
+const stick = { on: false, id: null, cx: 0, cy: 0, x: 0, y: 0 };
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) && state !== 'menu') e.preventDefault();
+  keys[e.code] = true;
+  if (e.repeat) return;
+  if (e.code === 'KeyP' || e.code === 'Escape') { if (GameNav.isOpen() || state.startsWith('paused')) resume(); else pause(); }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function holdBtn(id, prop) {
+  const b = $(id);
+  const on = e => { e.preventDefault(); touch[prop] = true; b.classList.add('on'); try { b.setPointerCapture(e.pointerId); } catch (_) { } };
+  const off = () => { touch[prop] = false; b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+holdBtn('bBreath', 'breath'); holdBtn('bZoom', 'boost');
+// a joystick that appears wherever you put your finger on the left side
+(function () {
+  const zone = $('stickZone'), base = $('stick'), knob = $('knob'), RAD = 60;
+  const move = e => {
+    let dx = e.clientX - stick.cx, dy = e.clientY - stick.cy; const d = Math.hypot(dx, dy);
+    if (d > RAD) { dx *= RAD / d; dy *= RAD / d; }
+    stick.x = dx / RAD; stick.y = -dy / RAD;
+    knob.style.transform = `translate(${dx}px,${dy}px)`;
+  };
+  zone.addEventListener('pointerdown', e => {
+    e.preventDefault(); if (stick.on) return;
+    stick.on = true; stick.id = e.pointerId; stick.cx = e.clientX; stick.cy = e.clientY; stick.x = stick.y = 0;
+    base.style.left = e.clientX + 'px'; base.style.top = e.clientY + 'px'; base.hidden = false; knob.style.transform = '';
+    $('stickHint').hidden = true;
+    try { zone.setPointerCapture(e.pointerId); } catch (_) { }
+  });
+  zone.addEventListener('pointermove', e => { if (stick.on && e.pointerId === stick.id) move(e); });
+  const end = e => { if (e.pointerId !== stick.id) return; stick.on = false; stick.x = stick.y = 0; base.hidden = true; };
+  zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end); zone.addEventListener('lostpointercapture', end);
+})();
+
+// ---------- Screens ----------
+function hideScreens() { $('menu').hidden = true; }
+function pause() {
+  if (state !== 'play') return;
+  state = 'paused-play';
+  Sound.setLoop('breath', 0); Sound.setLoop('wind', 0);
+  GameNav.open({
+    title: 'Paused', onClose: resume,
+    items: [
+      { icon: '🐉', label: 'Keep flying', resume: true, primary: true },
+      { icon: '🏰', label: 'Change dragon or world', fn: showMenu },
+    ],
+  });
+}
+function resume() {
+  GameNav.close(false);
+  if (!state.startsWith('paused-')) return;
+  state = state.slice(7); last = performance.now();
+  for (const k in keys) keys[k] = false;
+}
+function showMenu() {
+  state = 'menu'; clearParticles(); game = null;
+  Sound.setLoop('breath', 0); Sound.setLoop('wind', 0);
+  $('hud').hidden = true; $('menu').hidden = false;
+  if (dragon) { scene.remove(dragon); disposeGroup(dragon); dragon = null; }
+  const def = WORLDS.find(w => w.id === sel.world);
+  if (worldDef !== def) buildWorld(def);
+  setMenuDragon();
+  renderMenu();
+}
+function setMenuDragon() {
+  if (menuDragon) { scene.remove(menuDragon); disposeGroup(menuDragon); }
+  menuDragon = makeDragon(DRAGONS.find(d => d.id === sel.dragon)); scene.add(menuDragon);
+}
+$('playBtn').addEventListener('click', () => { GameNav.enterFull(); newGame(); });
+$('pauseBtn').addEventListener('click', pause);
+$('muteBtn').addEventListener('click', () => { Sound.muted = !Sound.muted; store.set('dragon-muted', Sound.muted); updateMuteBtn(); });
+$('freshBtn').addEventListener('click', () => {
+  const w = WORLDS.find(w => w.id === sel.world);
+  if (!confirm(`Start ${w.name} again? Your gems and happy volcanoes there will go back to the beginning.`)) return;
+  saveProgress(w.id, { gems: [], volc: [], saved: false });
+  worldDef = null; buildWorld(w); renderMenu();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+function drawDragonPreview(c, d) {
+  const x = c.getContext('2d'), W = c.width, H = c.height, hex = n => '#' + new THREE.Color(n).getHexString();
+  const sky = x.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, '#8fd0ff'); sky.addColorStop(1, '#d9f1ff'); x.fillStyle = sky; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#fff'; for (const [cx, cy, r] of [[30, 22, 12], [44, 18, 14], [160, 80, 10], [174, 76, 13]]) { x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); }
+  x.lineJoin = 'round'; x.lineCap = 'round';
+  // tail
+  x.strokeStyle = hex(d.body); x.lineWidth = 12; x.beginPath(); x.moveTo(80, 58); x.quadraticCurveTo(45, 72, 26, 50); x.stroke();
+  x.fillStyle = hex(d.wing); x.beginPath(); x.moveTo(26, 50); x.lineTo(14, 40); x.lineTo(16, 56); x.closePath(); x.fill();
+  // back wing
+  x.fillStyle = hex(new THREE.Color(d.wing).multiplyScalar(0.8).getHex()); x.beginPath(); x.moveTo(98, 46); x.lineTo(84, 8); x.lineTo(70, 30); x.lineTo(62, 26); x.lineTo(80, 50); x.fill();
+  // body and belly
+  x.fillStyle = hex(d.body); x.beginPath(); x.ellipse(100, 58, 30, 18, -0.1, 0, 7); x.fill();
+  x.fillStyle = hex(d.belly); x.beginPath(); x.ellipse(104, 66, 22, 9, -0.1, 0, 7); x.fill();
+  // neck and head
+  x.strokeStyle = hex(d.body); x.lineWidth = 14; x.beginPath(); x.moveTo(118, 50); x.lineTo(136, 34); x.stroke();
+  x.fillStyle = hex(d.body); x.beginPath(); x.arc(142, 30, 15, 0, 7); x.fill(); x.beginPath(); x.ellipse(158, 34, 12, 9, 0, 0, 7); x.fill();
+  x.fillStyle = '#fff'; x.beginPath(); x.arc(146, 25, 6, 0, 7); x.fill(); x.fillStyle = '#1b1210'; x.beginPath(); x.arc(148, 25, 3.2, 0, 7); x.fill();
+  x.fillStyle = '#ff8a80'; x.beginPath(); x.arc(150, 37, 3.5, 0, 7); x.fill();
+  if (d.crown) { x.fillStyle = '#ffd54f'; x.beginPath(); x.moveTo(132, 18); x.lineTo(134, 4); x.lineTo(139, 13); x.lineTo(143, 2); x.lineTo(147, 13); x.lineTo(152, 4); x.lineTo(152, 18); x.fill(); }
+  else { x.fillStyle = hex(d.horn); x.beginPath(); x.moveTo(134, 20); x.lineTo(124, 6); x.lineTo(140, 16); x.fill(); }
+  if (d.stars) { x.fillStyle = '#fff59d'; for (const [sx, sy] of [[92, 50], [104, 46], [86, 60]]) { x.beginPath(); x.arc(sx, sy, 2, 0, 7); x.fill(); } }
+  // front wing
+  x.fillStyle = hex(d.wing); x.beginPath(); x.moveTo(104, 46); x.lineTo(96, 0); x.lineTo(84, 22); x.lineTo(72, 18); x.lineTo(88, 50); x.fill();
+}
+function renderMenu() {
+  const box = $('dragons'); box.innerHTML = '';
+  for (const d of DRAGONS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (d.id === sel.dragon ? ' on' : '');
+    const c = document.createElement('canvas'); c.width = 200; c.height = 100; drawDragonPreview(c, d); b.appendChild(c);
+    b.appendChild(document.createTextNode(d.name));
+    b.onclick = () => { sel.dragon = d.id; store.set('dragon-pick', d.id); renderMenu(); setMenuDragon(); Sound.init(); Sound.tone(500, 0.12, 'square', 0.06, 200); };
+    box.appendChild(b);
+  }
+  const wb = $('worlds'); wb.innerHTML = '';
+  for (const w of WORLDS) {
+    const p = loadProgress(w.id);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (w.id === sel.world ? ' on' : '');
+    const c = document.createElement('canvas'); c.width = 200; c.height = 100;
+    const x = c.getContext('2d'); x.fillStyle = '#' + new THREE.Color(w.sky).getHexString(); x.fillRect(0, 0, 200, 100);
+    x.fillStyle = '#' + new THREE.Color(w.grass[0]).getHexString(); x.fillRect(0, 62, 200, 38);
+    x.font = '36px system-ui'; x.textAlign = 'center'; x.fillText(w.emoji, 100, 62);
+    b.appendChild(c); b.appendChild(document.createTextNode(w.name));
+    const sm = document.createElement('small');
+    sm.textContent = p.volc.length >= 4 ? `⭐ Saved! 💎 ${p.gems.length}/${GEM_COUNT}` : (p.gems.length || p.volc.length) ? `🌋 ${p.volc.length}/4 · 💎 ${p.gems.length}/${GEM_COUNT}` : w.blurb;
+    b.appendChild(sm);
+    b.onclick = () => { sel.world = w.id; store.set('dragon-world', w.id); renderMenu(); buildWorld(w); };
+    wb.appendChild(b);
+  }
+  $('keysDesk').hidden = IS_TOUCH; $('keysTouch').hidden = !IS_TOUCH;
+}
+
+// ---------- Main loop ----------
+let last = performance.now(), menuA = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (state === 'menu') {
+    menuA += dt * 0.25;
+    const R = 34, y = 48;
+    if (menuDragon) {
+      menuDragon.position.set(Math.cos(menuA) * R, y + Math.sin(menuA * 2) * 3, Math.sin(menuA) * R);
+      menuDragon.rotation.y = Math.atan2(-Math.sin(menuA), Math.cos(menuA));
+      menuDragon.userData.body.rotation.set(0, 0, -0.35);
+      animateDragon(menuDragon, dt, 6, false, -0.4, now / 1000);
+      camera.position.set(Math.cos(menuA - 0.5) * (R + 22), y + 10, Math.sin(menuA - 0.5) * (R + 22));
+      camera.lookAt(menuDragon.position);
+    }
+    updateWorld(dt); updateParticles(dt);
+  } else if (game && state === 'play') update(dt);
+  renderer.render(scene, camera);
+}
+updateMuteBtn();
+showMenu();
+if (PARAMS.has('autostart')) newGame();
+requestAnimationFrame(frame);
+window.__dragon = { renderer, get game() { return game; }, get state() { return state; }, get volcanoes() { return volcanoes; }, get gems() { return gems; }, get solids() { return solids; } };
+</script>
+</body>
+</html>
