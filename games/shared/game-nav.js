@@ -60,10 +60,11 @@
     add('🏠', 'All games', null, false, lobbyUrl);
     if (canFull()) {
       const fb = add('', '', () => { if (isFull()) exitFull(); else enterFull(); });
-      fb.id = 'gnFull'; syncFull();
+      fb.id = 'gnFull';
     }
     sheet.addEventListener('click', e => { if (e.target === sheet) close(true); }); // tap outside = keep playing
     document.body.appendChild(sheet);
+    syncFull(); // after it's on the page, so the full screen button gets its label
   }
   function syncFull() {
     const fb = document.getElementById('gnFull'); if (!fb) return;
